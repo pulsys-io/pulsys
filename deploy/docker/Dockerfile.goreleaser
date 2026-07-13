@@ -1,6 +1,6 @@
 # Minimal runtime image assembled by GoReleaser from prebuilt binaries.
 # (For a from-source build, see deploy/docker/Dockerfile.)
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian12:nonroot@sha256:b7bb25d9f7c31d2bdd1982feb4dafcaf137703c7075dbe2febb41c24212b946f
 
 LABEL org.opencontainers.image.title="pulsys" \
       org.opencontainers.image.description="Disk-caching reverse proxy for Hugging Face downloads" \

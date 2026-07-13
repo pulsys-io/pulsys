@@ -38,7 +38,7 @@
 #   Or via the wrapper:
 #     scripts/security-tests-linux.sh
 
-FROM golang:1.25-bookworm
+FROM golang:1.25-bookworm@sha256:a9c020ee3d1508c7be5435c262434e3d3fc1d0e76a11afeb9ddae7d60bc86aa4
 
 # Postgres client libraries for testpg DSN-bound tests (not
 # strictly required by lib/pq, but pgx pulls them in for

@@ -168,35 +168,44 @@ docker run --rm --name pulsys --security-opt seccomp=unconfined \
 425-427. Docker Desktop on macOS/Windows can engage io_uring functionally but its
 throughput numbers are virtualized and not representative.
 
-### EC2 (the harness that produces `results/ec2/`)
+### EC2 (one command)
 
-A tuned AL2023 AMI (binary + sysctls baked in), launched by CDK, driven over AWS
-SSM (no SSH, no long-lived keys). This is how `results/ec2/*` is produced; full
-details and the CDK outputs table are in
-[`infra/cdk/README.md`](../infra/cdk/README.md).
-
-Spin up, run, commit, spin down:
+Produces `docs/results/ec2/` and regenerates the landing-page cast from a
+**warm** `hf download` + `hf_transfer` over loopback after cache warm.
 
 ```bash
-# 1. Build + publish the AMI, deploy the bench host (default c7i.12xlarge).
+HF_TOKEN=hf_xxx scripts/run-aws-benchmarks.sh
+# optional: --skip-ami  --teardown
+# optional: INSTANCE_TYPE=c7i.4xlarge
+```
+
+That wraps: stock AMI (if missing) → CDK `PulsysBench` → set token → sync/rebuild
+→ saturate-iouring → cold+warm HF download → `render_hero_cast.sh`. Details:
+[`infra/cdk/README.md`](../infra/cdk/README.md). Tear down with
+`scripts/ssm-teardown.sh` when finished.
+
+Manual equivalent (same order):
+
+```bash
 scripts/build-stock-ami.sh
-cd infra/cdk && npm install && npx cdk deploy -c amiKind=stock --require-approval never && cd -
-
-# 2. Run the saturation bench (pulls results + charts, regenerates headline text).
+cd infra/cdk && npm install && \
+  CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text) \
+  CDK_DEFAULT_REGION=${AWS_REGION:-us-east-1} \
+  npx cdk deploy -c amiKind=stock --require-approval never && cd -
+HF_TOKEN=hf_xxx scripts/ssm-set-hf-token.sh
+scripts/ssm-sync-scripts.sh full
 scripts/ssm-bench.sh variant=saturate-iouring duration=30s
-scripts/ssm-tail-bench.sh        # optional: live monitor (prints io_uring_fused)
-
-# 3. Tear everything down (instance, SG, IAM, SSM docs, AMI, snapshot, S3).
+scripts/ssm-hf-download.sh model=Qwen/Qwen2.5-7B-Instruct skip_direct=1
+scripts/render_hero_cast.sh \
+  tmp/bench/ec2/hf-download/results.csv \
+  website/public/demos/hf-warm-demo.cast \
+  Qwen/Qwen2.5-7B-Instruct
 scripts/ssm-teardown.sh
 ```
 
-Pick a bigger or bare-metal box with `-c instanceType=...` (e.g.
-`c7i.24xlarge`, `c7i.metal-24xl`); `update_claims.sh` rewrites the headline to
-match whatever you measured. Defaults assume region `us-east-1` and stack
-`PulsysBench` (override with `AWS_REGION` / `HF_STACK_NAME`). You do not need
-bare metal to *run* io_uring (any Nitro instance on a 6.1 kernel works), but a
-virtualized or gVisor environment will run slower or fall back off io_uring
-entirely.
+Defaults assume region `us-east-1` and stack `PulsysBench` (override with
+`AWS_REGION` / `HF_STACK_NAME`). Do not commit account IDs, instance IDs, or
+`infra/cdk/cdk.context.json`.
 
 ### Verifying io_uring engagement
 

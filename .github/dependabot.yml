@@ -22,6 +22,19 @@ updates:
       go-minor-patch:
         update-types: ["minor", "patch"]
 
+  # Docker base images (digest-pinned; dependabot bumps the digests).
+  - package-ecosystem: docker
+    directories:
+      - "/"
+      - "/docker"
+      - "/deploy/docker"
+    schedule:
+      interval: weekly
+    labels: ["area/ci", "type/refactor"]
+    groups:
+      docker-digests:
+        patterns: ["*"]
+
   # JavaScript / TypeScript workspaces.
   - package-ecosystem: npm
     directory: "/website"

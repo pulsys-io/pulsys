@@ -153,17 +153,40 @@ bytes_of_dir() {
 
 now() { python3 -c 'import time; print(f"{time.time():.6f}")'; }
 
+# Resolve repo-relative scripts when running from /opt/pulsys-src or a checkout.
+SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 ensure_python_hf_cli
 load_hf_token
 
-# Times a single download.  Args: label, endpoint, target_dir.
+# Server uses PULSYS_HF_TOKEN for upstream; clients talking to Pulsys use BENCH_PAT.
+if [ -z "${PULSYS_HF_TOKEN:-}" ] && [ -n "${HF_TOKEN:-}" ]; then
+	export PULSYS_HF_TOKEN="$HF_TOKEN"
+fi
+if [ -z "${PULSYS_HF_TOKEN:-}" ]; then
+	echo "FATAL: PULSYS_HF_TOKEN (or HF_TOKEN) required for cold fills" >&2
+	exit 1
+fi
+UPSTREAM_HF_TOKEN="$PULSYS_HF_TOKEN"
+
+# Pulsys has no open mode: local Postgres + one seeded API key for the data plane.
+if [ -z "${PULSYS_DB_DSN:-}" ] || [ -z "${BENCH_PAT:-}" ]; then
+	eval "$(bash "$SCRIPT_ROOT/scripts/bench_db_up.sh")"
+fi
+if [ -z "${BENCH_PAT:-}" ]; then
+	echo "FATAL: bench_db_up.sh did not produce BENCH_PAT" >&2
+	exit 1
+fi
+export PULSYS_DB_DSN PULSYS_HF_TOKEN PULSYS_IMPORT_WORKER=0
+
+# Times a single download.  Args: label, endpoint, target_dir, client_token
 time_one() {
-	local label="$1" endpoint="$2" target="$3"
+	local label="$1" endpoint="$2" target="$3" client_token="${4:-}"
 	rm -rf "$target"
 	mkdir -p "$target"
 	local t0 t1 bytes wall mbps gbps
 	t0=$(now)
-	HF_ENDPOINT="$endpoint" \
+	env HF_ENDPOINT="$endpoint" HF_TOKEN="$client_token" \
 		python_hf_download "$MODEL" \
 			--local-dir "$target" \
 			--max-workers "$WORKERS" \
@@ -217,7 +240,7 @@ if [ "$SKIP_DIRECT" != "1" ]; then
 	echo
 	echo "[1/5] direct -- HF_ENDPOINT=https://huggingface.co  (no proxy)"
 	stop_proxy
-	time_one direct "https://huggingface.co" "$CLIENT_DIR_DIRECT"
+	time_one direct "https://huggingface.co" "$CLIENT_DIR_DIRECT" "$UPSTREAM_HF_TOKEN"
 	rm -rf "$CLIENT_DIR_DIRECT"
 fi
 
@@ -226,7 +249,7 @@ echo "[2/5] cold -- proxy cache empty, populating from huggingface.co"
 stop_proxy
 rm -rf "$CACHE_DIR"
 start_proxy "$CACHE_DIR"
-time_one cold "http://127.0.0.1:$PORT" "$CLIENT_DIR_COLD"
+time_one cold "http://127.0.0.1:$PORT" "$CLIENT_DIR_COLD" "$BENCH_PAT"
 rm -rf "$CLIENT_DIR_COLD"
 proxy_stats "after cold"
 
@@ -241,7 +264,7 @@ if [ "$DROP_PAGE_CACHE" = "1" ]; then
 	echo 3 >/proc/sys/vm/drop_caches 2>/dev/null || true
 fi
 start_proxy "$CACHE_DIR"
-time_one warm "http://127.0.0.1:$PORT" "$CLIENT_DIR_WARM"
+time_one warm "http://127.0.0.1:$PORT" "$CLIENT_DIR_WARM" "$BENCH_PAT"
 rm -rf "$CLIENT_DIR_WARM"
 proxy_stats "after warm"
 
@@ -301,7 +324,7 @@ echo "  baseline upstream_bytes=$OFFLINE_BASELINE_UPSTREAM refusals=$OFFLINE_BAS
 	| tee -a "$OFFLINE_LOG"
 
 # python offline
-time_one offline_python "http://127.0.0.1:$PORT" "$CLIENT_DIR_WARM" || true
+time_one offline_python "http://127.0.0.1:$PORT" "$CLIENT_DIR_WARM" "$BENCH_PAT" || true
 rm -rf "$CLIENT_DIR_WARM"
 proxy_stats "after offline python"
 

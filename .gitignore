@@ -3,8 +3,9 @@
 # UX comparison and parity-bench scripting; never push to remote.
 tmp/
 
-# Local Go build outputs (bin/pulsys, bin/pulsys-db, etc.)
-bin/
+# Local Go build outputs at repo root (bin/pulsys, bin/pulsys-db, etc.).
+# Leading slash: only the root bin/, not infra/cdk/bin/.
+/bin/
 
 # Go test / build cache (generally outside repo, but defensive)
 *.test
@@ -28,8 +29,8 @@ infra/packer/crash.log
 infra/cdk/cdk.out/
 infra/cdk/cdk.context.json
 infra/cdk/node_modules/
-infra/cdk/*.js
-infra/cdk/*.d.ts
+infra/cdk/**/*.js
+infra/cdk/**/*.d.ts
 infra/cdk/.cdk.staging/
 
 # Marketing site (generated assets + build)

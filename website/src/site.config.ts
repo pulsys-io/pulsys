@@ -6,7 +6,7 @@ const base = import.meta.env.BASE_URL;
 
 /** On-site Starlight docs (respects PUBLIC_BASE_PATH, e.g. /pulsys/docs). */
 export const docsHref = `${base}docs`.replace(/\/?$/, '/docs');
-export const getStartedHref = `${base}docs/benchmarks/`.replace(/\/?$/, '/docs/benchmarks/');
+export const getStartedHref = docsHref;
 
 export const githubEditDocsBase = `${repoHref}/edit/main/docs/`;
 export const discussionsHref = `${repoHref}/discussions`;
@@ -24,19 +24,97 @@ export const brandName = 'Pulsys';
 export const companyLegalName = 'Pulsys';
 export const legalEmail = 'privacy@pulsys.io';
 
-/**
- * Marketing copy and demo labels.
- */
+/** Landing-page copy. Every line is shipped behavior or a published measurement. */
 export const marketing = {
-  categoryBadge: 'Open-source artifact cache for ML',
-  heroTitle: 'Stop waiting on model downloads.',
+  categoryBadge: 'Open source · Apache-2.0',
+  /** Outcome + mechanism. Clarity over cleverness. */
+  heroTitle: 'Pull a model once. Serve the fleet from local disk.',
   heroLead:
-    'An authenticated pull-through cache for Hugging Face. Pull a model once; every later pull is served from local disk at wire speed — no repeat egress, no GPUs idling on downloads.',
+    'Pulsys is an authenticated pull-through cache for Hugging Face. Point HF_ENDPOINT at it: the first request fills local disk; every later request is a warm hit. That is CI and GPU time you stop spending on the public internet.',
   pageDescription:
-    'Open-source pull-through cache for Hugging Face. Authenticated by default. Apache-2.0.',
+    'Authenticated Hugging Face pull-through cache. Warm hits from local disk. Published EC2 benchmarks. Apache-2.0.',
+  primaryCta: 'Read the docs',
+  secondaryCta: 'View on GitHub',
+  finalCtaHeadline: 'Deploy with Docker Compose or Helm',
+  finalPrimaryCta: 'Read the docs',
+  finalSecondaryCta: 'Star on GitHub',
+
+  /** Value bridge: names the cost the product removes. */
+  valueTitle: 'Repeat downloads are the expensive part.',
+  valueLead:
+    'CI jobs and training nodes often re-pull the same weights on every run. A pull-through cache collapses that into one upstream fill and local-disk warm hits.',
+
+  proofTitle: 'Measured warm path',
+  featuresTitle: 'What changes when you put Pulsys in front',
+  usecasesTitle: 'Where the cost shows up',
+  archTitle: 'How it fits',
+  faqTitle: 'FAQ',
+
+  trustPills: ['Apache-2.0', 'Docker Compose', 'Helm', 'SLSA 3', 'Self-hosted'] as const,
+
+  features: [
+    {
+      title: 'No client rewrites',
+      body: 'Set HF_ENDPOINT to Pulsys. huggingface_hub, transformers, datasets, and the hf CLI keep working.',
+    },
+    {
+      title: 'One upstream fill',
+      body: 'The first miss streams from Hugging Face onto local disk. Later requests are served from cache.',
+    },
+    {
+      title: 'Warm path at the kernel',
+      body: 'Warm hits use io_uring on Linux 6.1+ and sendfile on macOS. Reference EC2 run and reproduction steps live in the benchmarks doc.',
+    },
+    {
+      title: 'Authenticated by default',
+      body: 'Every request needs a pulsys_* API key from the admin console. Client credentials never reach Hugging Face.',
+    },
+    {
+      title: 'Pre-warm before traffic',
+      body: 'Queue a repo in the console. A background job fills the cache so the fleet starts warm.',
+    },
+    {
+      title: 'Offline after fill',
+      body: 'Strict-offline mode serves cached artifacts with zero upstream egress.',
+    },
+  ] as const,
+
+  usecases: [
+    {
+      title: 'CI fleets',
+      body: 'The same model on every job should not re-cross the public internet. Point HF_ENDPOINT at Pulsys and the second pull is local.',
+    },
+    {
+      title: 'Training clusters',
+      body: 'Idle accelerators waiting on egress are the real price of a cold pull. Warm hits stream from local disk.',
+    },
+    {
+      title: 'Air-gapped networks',
+      body: 'Pre-warm where there is connectivity, then serve the isolated network with no upstream dependency.',
+    },
+  ] as const,
+
+  faq: [
+    {
+      q: 'Which clients work?',
+      a: 'Any client that speaks the Hugging Face Hub wire protocol. Set HF_ENDPOINT to Pulsys and use a pulsys_* API key as HF_TOKEN.',
+    },
+    {
+      q: 'Where do credentials live?',
+      a: 'Pulsys holds a read-only Hugging Face token (PULSYS_HF_TOKEN) for cache misses. Clients use Pulsys API keys from the admin UI. See the security doc.',
+    },
+    {
+      q: 'Can instances share EFS or S3?',
+      a: 'No. The warm path assumes local disk. Shared filesystems cap throughput below local disk.',
+    },
+    {
+      q: 'How do I pre-warm the cache?',
+      a: 'Pull through the proxy once, or queue an import from the admin console before traffic arrives.',
+    },
+  ] as const,
+
   integrationName: 'Hugging Face Hub',
   baselineCliLabel: 'Direct download',
-  /** CLI shown in hero terminal demos. */
   cliBinName: 'hf',
   demoModelId: 'Qwen/Qwen2.5-7B-Instruct',
 } as const;
