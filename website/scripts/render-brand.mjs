@@ -64,7 +64,7 @@ await sharp(Buffer.from(ogSvg)).png().toFile(path.join(pub, 'og.png'));
 // Favicon PNG fallbacks rendered from the checked-in favicon.svg (single
 // source of truth for the mark-on-rounded-square icon).
 const faviconSvg = await readFile(path.join(pub, 'favicon.svg'));
-for (const size of [16, 32, 48, 180, 512]) {
+for (const size of [16, 32, 48, 180, 512, 1024]) {
   await sharp(faviconSvg, { density: (72 * size) / 32 })
     .resize(size, size)
     .png()
@@ -72,5 +72,5 @@ for (const size of [16, 32, 48, 180, 512]) {
 }
 
 console.log(
-  'brand assets written: brand/github-avatar-512.png, apple-touch-icon.png, og.png, favicon-{16,32,48,180,512}.png'
+  'brand assets written: brand/github-avatar-512.png, apple-touch-icon.png, og.png, favicon-{16,32,48,180,512,1024}.png'
 );
