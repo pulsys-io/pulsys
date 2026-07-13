@@ -6,7 +6,7 @@
 #
 #   1. Ensure stock AMI exists (build if missing)
 #   2. Deploy PulsysBench (default c7i.12xlarge)
-#   3. Persist HF token on the instance (for cold fills)
+#   3. Validate HF_TOKEN and store it in the stack-owned Secrets Manager secret
 #   4. Sync scripts + rebuild binary from this checkout
 #   5. Saturation bench (io_uring) -> docs/results/ec2/
 #   6. Real hf + hf_transfer download (cold then warm loopback) -> cast rate
@@ -111,8 +111,22 @@ for i in $(seq 1 60); do
 	sleep 10
 done
 
-echo "==> persist HF token on instance (once)"
-bash "$ROOT/scripts/ssm-set-hf-token.sh"
+# The CDK stack owns a Secrets Manager secret for the HF token; we only set
+# its *value* here (values can't live in a template).  Validate first so a
+# dead token fails now, not mid-download.
+echo "==> set HF token value in the stack's Secrets Manager secret"
+CODE="$(curl -s -o /dev/null -w '%{http_code}' \
+	-H "Authorization: Bearer $HF_TOKEN" https://huggingface.co/api/whoami-v2)"
+if [ "$CODE" != "200" ]; then
+	echo "FATAL: HF_TOKEN rejected by huggingface.co (whoami-v2 -> HTTP $CODE)" >&2
+	exit 1
+fi
+SECRET_ARN="$(aws cloudformation describe-stacks --stack-name "$HF_STACK_NAME" \
+	--query "Stacks[0].Outputs[?OutputKey=='HfTokenSecretOut'].OutputValue" --output text)"
+[ -n "$SECRET_ARN" ] || { echo "FATAL: stack has no HfTokenSecretOut output" >&2; exit 1; }
+aws secretsmanager put-secret-value \
+	--secret-id "$SECRET_ARN" --secret-string "$HF_TOKEN" >/dev/null
+echo "    token valid (whoami-v2 200); stored in stack secret"
 
 echo "==> sync working tree + rebuild pulsys on instance"
 bash "$ROOT/scripts/ssm-sync-scripts.sh" full

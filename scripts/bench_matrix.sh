@@ -43,8 +43,8 @@ export PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 # Pulsys requires a server-side HF token (there is no open mode); it would
 # refuse to start otherwise.  The loopback bench points pulsys at the local
 # fake-hf upstream, so a placeholder satisfies the startup check without ever
-# contacting Hugging Face.  A real PULSYS_HF_TOKEN in the environment (e.g. set
-# via scripts/ssm-set-hf-token.sh for real-download runs) is respected if present.
+# contacting Hugging Face.  A real PULSYS_HF_TOKEN in the environment (fetched
+# from the stack's Secrets Manager secret for real-download runs) wins if present.
 : "${PULSYS_HF_TOKEN:=bench-loopback-placeholder-token}"
 export PULSYS_HF_TOKEN
 

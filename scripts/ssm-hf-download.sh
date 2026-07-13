@@ -4,6 +4,10 @@
 # Drives scripts/hf_download_bench.sh on the bench instance via SSM.  Pulls
 # the resulting CSV back to tmp/bench/ec2/hf-download/.
 #
+# HF token comes from the stack-owned Secrets Manager secret (output
+# HfTokenSecretOut); set its value once via scripts/run-aws-benchmarks.sh or
+# `aws secretsmanager put-secret-value`.
+#
 # Usage:
 #   scripts/ssm-hf-download.sh                                   # default model
 #   scripts/ssm-hf-download.sh model=Qwen/Qwen2.5-32B-Instruct
@@ -47,26 +51,21 @@ aws ssm get-command-invocation --region "$AWS_REGION" \
 
 echo "==> running hf_download_bench (model=$MODEL workers=$WORKERS skip_direct=$SKIP_DIRECT)"
 
-# HF_TOKEN handling: prefer the persistent /etc/pulsys/hf-token file
-# (one-time setup via scripts/ssm-set-hf-token.sh).  If the local env has
-# HF_TOKEN, we pass it inline as a fallback — works, but the token will
-# appear in SSM command history.  Run ssm-set-hf-token.sh once and unset
-# the local env if you want it to stay out of SSM logs.
-TOKEN_EXPORT=""
-if [ -n "${HF_TOKEN:-}" ]; then
-	echo "==> WARN: passing local HF_TOKEN inline (will appear in SSM command history)" >&2
-	# bash $'...' escaping for the token value
-	TOKEN_EXPORT="export HF_TOKEN=$(printf %q "$HF_TOKEN")"
-fi
+# HF token: the instance fetches it from the CDK-owned Secrets Manager secret
+# (its IAM role has GetSecretValue), so no token rides through SSM command
+# history.  We only pass the secret ARN, which is not sensitive.
+SECRET_ARN="$(stack_output HfTokenSecretOut)"
+[ -n "$SECRET_ARN" ] || { echo "FATAL: no HfTokenSecretOut output; redeploy the stack" >&2; exit 1; }
 
 CMD_LINES=(
 	"set -euo pipefail"
 	"export MODEL='$MODEL'"
 	"export WORKERS='$WORKERS'"
 	"export SKIP_DIRECT='$SKIP_DIRECT'"
+	"export HF_TOKEN_SECRET_ARN='$SECRET_ARN'"
+	"export AWS_REGION='$AWS_REGION' AWS_DEFAULT_REGION='$AWS_REGION'"
+	"sudo -E bash /opt/pulsys-src/scripts/hf_download_bench.sh"
 )
-[ -n "$TOKEN_EXPORT" ] && CMD_LINES+=("$TOKEN_EXPORT")
-CMD_LINES+=("sudo -E bash /opt/pulsys-src/scripts/hf_download_bench.sh")
 PARAMS_JSON="$(jq -nc \
 	--argjson lines "$(printf '%s\n' "${CMD_LINES[@]}" | jq -R . | jq -s .)" \
 	'{commands: $lines, executionTimeout: ["3600"]}')"

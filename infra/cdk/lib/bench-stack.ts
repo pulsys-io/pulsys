@@ -44,6 +44,7 @@ import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { BenchDocuments } from './bench-docs';
 
@@ -94,23 +95,17 @@ export class BenchStack extends cdk.Stack {
       ],
     });
 
-    // Read-only Hugging Face token for cold fills, stored once per account as
-    // Secrets Manager secret "pulsys/hf-token" (see scripts/set-hf-secret.sh).
-    // Fetched at run time on the instance; never baked into the AMI and never
-    // passed inline through SSM command history.
-    role.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ['secretsmanager:GetSecretValue'],
-        resources: [
-          cdk.Stack.of(this).formatArn({
-            service: 'secretsmanager',
-            resource: 'secret',
-            resourceName: 'pulsys/hf-token*',
-            arnFormat: cdk.ArnFormat.COLON_RESOURCE_NAME,
-          }),
-        ],
-      }),
-    );
+    // Read-only Hugging Face token for cold fills.  The stack owns the
+    // secret shell; the *value* is set out-of-band after deploy (see
+    // scripts/run-aws-benchmarks.sh) so no token ever appears in the
+    // template, the AMI, or SSM command history.  The instance fetches it
+    // at run time via the HfTokenSecretOut output.
+    const hfTokenSecret = new secretsmanager.Secret(this, 'HfTokenSecret', {
+      description:
+        'Pulsys bench: read-only Hugging Face token for cold fills. ' +
+        'Set via: aws secretsmanager put-secret-value',
+    });
+    hfTokenSecret.grantRead(role);
 
     // ---------------------------------------------------------------
     // 3. Results bucket
@@ -249,6 +244,12 @@ fi
       value: results.bucketName,
       description: 'S3 bucket where profile/sweep/bench artifacts land',
       exportName: `${this.stackName}-ResultsBucket`,
+    });
+    new cdk.CfnOutput(this, 'HfTokenSecretOut', {
+      value: hfTokenSecret.secretArn,
+      description:
+        'Secrets Manager secret holding the read-only HF token (value set post-deploy)',
+      exportName: `${this.stackName}-HfTokenSecret`,
     });
     new cdk.CfnOutput(this, 'AmiKindOut', { value: props.amiKind });
     new cdk.CfnOutput(this, 'AmiIdOut', { value: amiId });

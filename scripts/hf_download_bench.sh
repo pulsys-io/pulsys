@@ -83,20 +83,35 @@ ensure_python_hf_cli() {
 	fi
 }
 
-# Load HF_TOKEN from /etc/pulsys/hf-token if not already in env.
-# Persistent token avoids HF rate-limits on cold runs.
+# Resolve HF_TOKEN for cold fills.  Source of truth is the Secrets Manager
+# secret owned by the CDK stack (HfTokenSecretOut); the instance role has
+# GetSecretValue on it, so the token never rides through SSM command history
+# or gets baked into an AMI.  HF_TOKEN in env still wins for local runs.
 load_hf_token() {
-	if [ -z "${HF_TOKEN:-}" ] && [ -r /etc/pulsys/hf-token ]; then
-		HF_TOKEN="$(cat /etc/pulsys/hf-token)"
+	if [ -z "${HF_TOKEN:-}" ] && [ -n "${HF_TOKEN_SECRET_ARN:-}" ]; then
+		HF_TOKEN="$(aws secretsmanager get-secret-value \
+			--secret-id "$HF_TOKEN_SECRET_ARN" \
+			--query SecretString --output text 2>/dev/null || true)"
 		export HF_TOKEN
 	fi
 	if [ -n "${HF_TOKEN:-}" ]; then
 		# The python `hf` CLI reads HF_TOKEN; surface the (masked) presence
 		# so log readers know auth is on.
 		echo "  HF_TOKEN: set (sha256=$(printf '%s' "$HF_TOKEN" | sha256sum | cut -c1-8))"
+		# Fail fast on a dead token instead of a confusing 401 mid-download.
+		local code
+		code="$(curl -s -o /dev/null -w '%{http_code}' \
+			-H "Authorization: Bearer $HF_TOKEN" https://huggingface.co/api/whoami-v2 || true)"
+		if [ "$code" != "200" ]; then
+			echo "FATAL: HF token rejected by huggingface.co (whoami-v2 -> HTTP $code)" >&2
+			echo "  refresh it: HF_TOKEN=hf_xxx scripts/run-aws-benchmarks.sh (puts value into the stack secret)" >&2
+			exit 1
+		fi
+		echo "  HF_TOKEN: valid (whoami-v2 200)"
 	else
-		echo "  HF_TOKEN: NOT SET — expect rate limits on cold runs"
-		echo "    fix: scripts/ssm-set-hf-token.sh  (or export HF_TOKEN locally then re-run ssm-hf-download.sh)"
+		echo "FATAL: no HF token (env HF_TOKEN empty, secret lookup failed)" >&2
+		echo "  expected HF_TOKEN_SECRET_ARN from the stack output HfTokenSecretOut" >&2
+		exit 1
 	fi
 }
 

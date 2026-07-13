@@ -179,7 +179,12 @@ HF_TOKEN=hf_xxx scripts/run-aws-benchmarks.sh
 # optional: INSTANCE_TYPE=c7i.4xlarge
 ```
 
-That wraps: stock AMI (if missing) → CDK `PulsysBench` → set token → sync/rebuild
+The stack owns a Secrets Manager secret for the HF token; the wrapper
+validates your `HF_TOKEN` against `whoami-v2` and stores it there, and the
+instance reads it at run time via its IAM role — the token never appears in
+SSM command history or the AMI.
+
+That wraps: stock AMI (if missing) → CDK `PulsysBench` → set secret value → sync/rebuild
 → saturate-iouring → cold+warm HF download → `render_hero_cast.sh`. Details:
 [`infra/cdk/README.md`](../infra/cdk/README.md). Tear down with
 `scripts/ssm-teardown.sh` when finished.
@@ -192,7 +197,10 @@ cd infra/cdk && npm install && \
   CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text) \
   CDK_DEFAULT_REGION=${AWS_REGION:-us-east-1} \
   npx cdk deploy -c amiKind=stock --require-approval never && cd -
-HF_TOKEN=hf_xxx scripts/ssm-set-hf-token.sh
+aws secretsmanager put-secret-value \
+  --secret-id "$(aws cloudformation describe-stacks --stack-name PulsysBench \
+      --query "Stacks[0].Outputs[?OutputKey=='HfTokenSecretOut'].OutputValue" --output text)" \
+  --secret-string "$HF_TOKEN"
 scripts/ssm-sync-scripts.sh full
 scripts/ssm-bench.sh variant=saturate-iouring duration=30s
 scripts/ssm-hf-download.sh model=Qwen/Qwen2.5-7B-Instruct skip_direct=1
