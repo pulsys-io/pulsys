@@ -69,7 +69,7 @@ the local filesystem.
 ## Registry & supply-chain candidates
 
 - **Artifact malware scanning.** Scan imported/uploaded artifacts (e.g.
-  pickle/safetensors inspection) before they become servable, for air-gapped
+  pickle/safetensors inspection) before they become servable in controlled
   delivery pipelines.
 - **Tag locking.** Pin a repo tag/revision so it cannot be silently
   re-pointed — consistency guarantees from development to production. The

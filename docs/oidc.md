@@ -6,7 +6,7 @@ test against:
 
 | IdP | Best for |
 |-----|----------|
-| [Keycloak](#keycloak-production) | self-hosted / air-gapped, full control |
+| [Keycloak](#keycloak-production) | self-hosted environments, full control |
 | [Amazon Cognito](#amazon-cognito) | quick start on AWS; what the EKS e2e uses |
 | [AWS IAM Identity Center](#aws-iam-identity-center) | enterprise SSO across an AWS org |
 
