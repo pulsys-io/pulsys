@@ -54,24 +54,33 @@ if [ ! -d "$DATA_ROOT" ]; then mkdir -p "$DATA_ROOT"; fi
 # https://huggingface.co/docs/huggingface_hub/en/guides/cli
 export HF_HUB_ENABLE_HF_TRANSFER=1
 export HF_HUB_DISABLE_TELEMETRY=1
-export HF_HUB_DISABLE_IMPLICIT_TOKEN=1
+# Classic LFS resolve path (not Xet CDN). Keeps Authorization on every hop
+# through Pulsys and matches a cleaner warm-loopback measurement.
+export HF_HUB_DISABLE_XET=1
+unset HF_HUB_DISABLE_IMPLICIT_TOKEN || true
 export HF_HUB_DOWNLOAD_TIMEOUT=300
 
 # Install huggingface_hub on fresh AMIs (new EC2 hosts do not have it by default).
 # [cli] extra was removed in huggingface_hub >=1.0 (CLI is built-in now).
 ensure_python_hf_cli() {
-	if python3 -c 'import huggingface_hub' 2>/dev/null; then
-		return 0
+	if ! python3 -c 'import huggingface_hub' 2>/dev/null; then
+		echo "==> installing official Python huggingface_hub (hf CLI)..."
+		if ! command -v pip3 >/dev/null 2>&1; then
+			sudo dnf install -y python3-pip
+		fi
+		sudo pip3 install -q huggingface_hub hf_transfer
+		python3 -c 'import huggingface_hub' 2>/dev/null || {
+			echo "FATAL: could not install huggingface_hub" >&2
+			exit 1
+		}
 	fi
-	echo "==> installing official Python huggingface_hub (hf CLI)..."
-	if ! command -v pip3 >/dev/null 2>&1; then
-		sudo dnf install -y python3-pip
+	# Xet CDN follow-ups rewrite to /_p/... and currently arrive without a
+	# Pulsys Bearer on some client versions; for reproducible warm-loopback
+	# numbers use classic LFS + hf_transfer instead.
+	if python3 -c 'from huggingface_hub.utils._runtime import is_xet_available; raise SystemExit(0 if is_xet_available() else 1)' 2>/dev/null; then
+		echo "==> uninstalling hf-xet so downloads use LFS + hf_transfer (not Xet CDN)"
+		sudo pip3 uninstall -y hf-xet hf_xet 2>/dev/null || true
 	fi
-	sudo pip3 install -q huggingface_hub hf_transfer
-	python3 -c 'import huggingface_hub' 2>/dev/null || {
-		echo "FATAL: could not install huggingface_hub" >&2
-		exit 1
-	}
 }
 
 # Load HF_TOKEN from /etc/pulsys/hf-token if not already in env.
@@ -186,8 +195,9 @@ time_one() {
 	mkdir -p "$target"
 	local t0 t1 bytes wall mbps gbps
 	t0=$(now)
-	env HF_ENDPOINT="$endpoint" HF_TOKEN="$client_token" \
+	HF_ENDPOINT="$endpoint" HF_TOKEN="$client_token" \
 		python_hf_download "$MODEL" \
+			--token "$client_token" \
 			--local-dir "$target" \
 			--max-workers "$WORKERS" \
 			>"$LOG_DIR/$label.out" 2>"$LOG_DIR/$label.err" || {

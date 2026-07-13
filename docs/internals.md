@@ -133,8 +133,8 @@ body. Implementation:
 [`internal/coreserver/iouring_reactor_linux.go`](../internal/coreserver/iouring_reactor_linux.go)
 and the sibling `iouring_*_linux.go` files.
 <!-- bench:headline:start -->
-On a 48-vCPU `c7i.12xlarge` it hits **1.42M req/s @ 4 KiB**; larger
-payloads are memory-bandwidth bound (~99 GB/s loopback at 16 MiB) and
+On a 48-vCPU `c7i.12xlarge` it hits **1.36M req/s @ 4 KiB**; larger
+payloads are memory-bandwidth bound (~90 GB/s loopback at 16 MiB) and
 tie the cork/sendfile path.
 <!-- bench:headline:end -->
 The committed reference run uses a stock `c7i.12xlarge`; see

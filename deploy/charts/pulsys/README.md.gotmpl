@@ -3,6 +3,7 @@
 {{ template "chart.deprecationWarning" . }}
 
 {{ template "chart.badgesSection" . }}
+[![helm CI](https://github.com/pulsys-io/pulsys/actions/workflows/helm.yml/badge.svg)](https://github.com/pulsys-io/pulsys/actions/workflows/helm.yml)
 
 {{ template "chart.description" . }}
 
@@ -88,5 +89,20 @@ helm test <release> --namespace <namespace>
 ```
 
 The bundled test hits `/healthz` on both the data-plane and admin ports.
+
+## How this chart is tested
+
+Every change to the chart runs a layered pipeline in
+[`helm.yml`](https://github.com/pulsys-io/pulsys/blob/main/.github/workflows/helm.yml):
+
+1. `helm lint` + `chart-testing` (version-bump and maintainer checks)
+2. `helm-docs` drift check (this README is generated; stale docs fail CI)
+3. `values.schema.json` validation — accepts known-good values, rejects bad ones
+4. `helm-unittest` snapshot/unit tests (no cluster)
+5. `kubeconform` manifest validation against k8s 1.27 / 1.29 / 1.31 schemas
+6. Static security analysis: polaris, kube-score, and a Trivy config scan
+7. Full install on [kind](https://kind.sigs.k8s.io) across oldest + newest
+   supported Kubernetes, against a real CloudNativePG cluster, followed by
+   `helm test` and an in-place `helm upgrade` + re-test
 
 {{ template "helm-docs.versionFooter" . }}

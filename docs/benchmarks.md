@@ -6,8 +6,8 @@ Measured numbers, the artifacts behind them, and how to reproduce everything.
 
 <!-- bench:headline:start -->
 Full-machine loopback (io_uring) on the committed reference run
-(`c7i.12xlarge`, 48 vCPU, Linux 6.1.174-217.345.amzn2023.x86_64):
-**1.42M req/s** at 4 KiB, **99 GB/s** at 16 MiB.
+(`c7i.12xlarge`, 48 vCPU, Linux 6.1.176-221.360.amzn2023.x86_64):
+**1.36M req/s** at 4 KiB, **90 GB/s** at 16 MiB.
 <!-- bench:headline:end -->
 
 These numbers are not hand-authored: they are emitted by the CDK + SSM harness

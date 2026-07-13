@@ -118,10 +118,10 @@ echo "==> sync working tree + rebuild pulsys on instance"
 bash "$ROOT/scripts/ssm-sync-scripts.sh" full
 
 echo "==> saturation bench (io_uring)"
-bash "$ROOT/scripts/ssm-bench.sh" variant=saturate-iouring duration=30s
+bash "$ROOT/scripts/ssm-bench.sh" "variant=saturate-iouring" "duration=30s"
 
 echo "==> hf + hf_transfer download (cold then warm over loopback)"
-bash "$ROOT/scripts/ssm-hf-download.sh" "model=$HF_BENCH_MODEL" skip_direct=1
+bash "$ROOT/scripts/ssm-hf-download.sh" "model=${HF_BENCH_MODEL}" "skip_direct=1"
 
 echo "==> render hero cast from warm row"
 bash "$ROOT/scripts/render_hero_cast.sh" \

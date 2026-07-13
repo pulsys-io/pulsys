@@ -94,6 +94,24 @@ export class BenchStack extends cdk.Stack {
       ],
     });
 
+    // Read-only Hugging Face token for cold fills, stored once per account as
+    // Secrets Manager secret "pulsys/hf-token" (see scripts/set-hf-secret.sh).
+    // Fetched at run time on the instance; never baked into the AMI and never
+    // passed inline through SSM command history.
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          cdk.Stack.of(this).formatArn({
+            service: 'secretsmanager',
+            resource: 'secret',
+            resourceName: 'pulsys/hf-token*',
+            arnFormat: cdk.ArnFormat.COLON_RESOURCE_NAME,
+          }),
+        ],
+      }),
+    );
+
     // ---------------------------------------------------------------
     // 3. Results bucket
     // ---------------------------------------------------------------

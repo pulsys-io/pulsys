@@ -25,8 +25,8 @@ is served from disk with no upstream egress. Warm hits use io_uring/sendfile on
 Linux 6.1+ and `sendfile` + `sf_hdtr` on macOS.
 
 <!-- bench:headline:start -->
-On a 48-vCPU `c7i.12xlarge` (io_uring) it sustains **1.42M req/s** at 4 KiB and
-**99 GB/s** loopback at 16 MiB.
+On a 48-vCPU `c7i.12xlarge` (io_uring) it sustains **1.36M req/s** at 4 KiB and
+**90 GB/s** loopback at 16 MiB.
 <!-- bench:headline:end -->
 Numbers, receipts, and reproduction (on a stock `c7i.12xlarge` by default):
 [`docs/benchmarks.md`](docs/benchmarks.md).
