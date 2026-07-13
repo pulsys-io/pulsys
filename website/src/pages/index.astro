@@ -102,10 +102,6 @@ Download complete</code></pre>
           <img src={`${base}results/ec2/throughput.svg`} alt="Throughput by payload (EC2 reference run)" loading="lazy" />
           <figcaption>EC2 saturation · GB/s by payload</figcaption>
         </figure>
-        <figure class="lp-chart lp-chart--wide">
-          <img src={`${base}results/darwin/e2e.svg`} alt="End-to-end hf download wallclock comparison" loading="lazy" />
-          <figcaption>End-to-end <code>hf download</code> wallclock (Darwin harness)</figcaption>
-        </figure>
       </div>
 
       <p class="lp-footnote">
@@ -309,9 +305,6 @@ export HF_TOKEN=pulsys_...
     padding: 0.65rem 1rem;
     font-size: 0.8125rem;
     color: rgba(255, 255, 255, 0.55);
-  }
-  .lp-chart--wide {
-    grid-column: 1 / -1;
   }
   @media (min-width: 900px) {
     .lp-charts {
