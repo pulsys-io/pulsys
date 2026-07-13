@@ -1,0 +1,8 @@
+# OSV-Scanner ignore list (read by scorecard's Vulnerabilities check).
+[[IgnoredVulns]]
+id = "GO-2026-5932"
+# golang.org/x/crypto/openpgp is deprecated wholesale with no fixed version.
+# x/crypto is an indirect dependency here and govulncheck's call-graph
+# analysis (run in CI) confirms the openpgp package is never imported or
+# called by this module.
+reason = "x/crypto/openpgp is not imported; indirect dependency only, verified by govulncheck in CI"
