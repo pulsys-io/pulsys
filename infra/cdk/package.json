@@ -15,13 +15,13 @@
     "destroy": "cdk destroy"
   },
   "dependencies": {
-    "aws-cdk-lib": "^2.150.0",
-    "constructs": "^10.3.0"
+    "aws-cdk-lib": "^2.261.0",
+    "constructs": "^10.6.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^26.1.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.0"
+    "typescript": "^6.0.3"
   },
   "overrides": {
     "brace-expansion": ">=5.0.6"
