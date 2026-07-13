@@ -2,6 +2,7 @@
 import { brandName, marketing } from '../site.config';
 
 const { integrationName } = marketing;
+const base = import.meta.env.BASE_URL;
 /** AWS-official group containers + service icons (dark mode). */
 ---
 
@@ -13,20 +14,20 @@ const { integrationName } = marketing;
   >
     <div class="aws-group aws-group--vpc">
       <header class="aws-group__head">
-        <img src="/aws-icons/vpc-group.svg" alt="" width="22" height="22" class="aws-group__icon" />
+        <img src={`${base}aws-icons/vpc-group.svg`} alt="" width="22" height="22" class="aws-group__icon" />
         <span class="aws-group__label">VPC</span>
         <span class="aws-group__sub">Customer</span>
       </header>
 
       <div class="aws-group aws-group--subnet">
         <header class="aws-group__head">
-          <img src="/aws-icons/private-subnet-group.svg" alt="" width="22" height="22" class="aws-group__icon" />
+          <img src={`${base}aws-icons/private-subnet-group.svg`} alt="" width="22" height="22" class="aws-group__icon" />
           <span class="aws-group__label">Private subnet</span>
         </header>
 
         <div class="aws-row">
           <figure class="aws-svc">
-            <img src="/aws-icons/elastic-load-balancing.svg" alt="" width="56" height="56" class="aws-svc__icon" />
+            <img src={`${base}aws-icons/elastic-load-balancing.svg`} alt="" width="56" height="56" class="aws-svc__icon" />
             <figcaption class="aws-svc__cap">
               <span class="aws-svc__name">ALB</span>
               <span class="aws-svc__sub">TLS</span>
@@ -41,7 +42,7 @@ const { integrationName } = marketing;
           </span>
 
           <figure class="aws-svc">
-            <img src="/aws-icons/amazon-ec2.svg" alt="" width="56" height="56" class="aws-svc__icon" />
+            <img src={`${base}aws-icons/amazon-ec2.svg`} alt="" width="56" height="56" class="aws-svc__icon" />
             <figcaption class="aws-svc__cap">
               <span class="aws-svc__name">Amazon EC2</span>
               <span class="aws-svc__sub brand-mark">{brandName}</span>
@@ -56,7 +57,7 @@ const { integrationName } = marketing;
           </span>
 
           <figure class="aws-svc">
-            <img src="/aws-icons/amazon-ebs.svg" alt="" width="56" height="56" class="aws-svc__icon" />
+            <img src={`${base}aws-icons/amazon-ebs.svg`} alt="" width="56" height="56" class="aws-svc__icon" />
             <figcaption class="aws-svc__cap">
               <span class="aws-svc__name">EBS</span>
               <span class="aws-svc__sub">cache</span>

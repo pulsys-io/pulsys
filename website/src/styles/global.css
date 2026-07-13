@@ -1213,6 +1213,10 @@ html.theme-dark body {
   }
 
   .lp-hero__visual {
+    /* width: 100% keeps the box definite; without it the auto margins make
+       this grid item shrink-to-fit and the asciinema player (fit: width)
+       measures a collapsed ~70px container. */
+    width: 100%;
     max-width: 26rem;
     margin-inline: auto;
   }
@@ -1404,12 +1408,22 @@ ol.clean li {
 }
 
 .blog-post-card {
+  position: relative;
   border: 1px solid var(--separator);
   border-radius: 18px;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, transparent), transparent 56%),
     var(--bg-elevated);
   box-shadow: 0 22px 70px rgb(0 0 0 / 28%);
+  transition: border-color 0.15s ease;
+}
+
+.blog-post-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--separator));
+}
+
+.blog-post-card:focus-within {
+  border-color: var(--accent);
 }
 
 .blog-post-card .post-meta {
@@ -1426,6 +1440,20 @@ ol.clean li {
 
 .blog-post-card .post-title a {
   color: var(--text);
+  text-decoration: none;
+}
+
+/* Stretch the link over the card: one big tap target instead of a
+   two-line underlined text link (matters most on touch). */
+.blog-post-card .post-title a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.blog-post-card .post-title a:focus-visible {
+  outline: none;
 }
 
 .blog-post-card .post-title a:hover {
