@@ -183,6 +183,9 @@ jobs:
       - name: create kind cluster
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
         with:
+          # kind >= 0.27 is required for kindest/node v1.33 images
+          # (containerd 2.x snapshotter detection in `kind load`).
+          version: v0.29.0
           node_image: ${{ matrix.image }}
           cluster_name: pulsys
 
