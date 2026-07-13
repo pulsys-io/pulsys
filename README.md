@@ -8,11 +8,9 @@ An authenticated pull-through cache for Hugging Face with a sendfile/io_uring
 warm path.
 
 [![CI](https://github.com/pulsys-io/pulsys/actions/workflows/linux.yml/badge.svg)](https://github.com/pulsys-io/pulsys/actions/workflows/linux.yml)
-[![Security](https://github.com/pulsys-io/pulsys/actions/workflows/security.yml/badge.svg)](https://github.com/pulsys-io/pulsys/actions/workflows/security.yml)
-[![Helm](https://github.com/pulsys-io/pulsys/actions/workflows/helm.yml/badge.svg)](https://github.com/pulsys-io/pulsys/actions/workflows/helm.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/pulsys-io/pulsys)](https://goreportcard.com/report/github.com/pulsys-io/pulsys)
+[![Go Reference](https://pkg.go.dev/badge/github.com/pulsys-io/pulsys.svg)](https://pkg.go.dev/github.com/pulsys-io/pulsys)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/pulsys-io/pulsys/badge)](https://securityscorecards.dev/viewer/?uri=github.com/pulsys-io/pulsys)
-[![SLSA 3](https://slsa.dev/images/gh-badge-level3.svg)](https://slsa.dev)
+[![SLSA 3](https://slsa.dev/images/gh-badge-level3.svg)](https://slsa.dev/spec/v1.0/levels)
 [![Release](https://img.shields.io/github/v/release/pulsys-io/pulsys?sort=semver)](https://github.com/pulsys-io/pulsys/releases)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
