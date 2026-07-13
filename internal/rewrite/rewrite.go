@@ -48,28 +48,54 @@ func LocationToProxyWithOrigin(publicBase *url.URL, allow func(host string) bool
 		return "", false
 	}
 	ju, _ := url.Parse(joined)
-	q := u.Query()
+	// Preserve the upstream query BYTE-FOR-BYTE.  CDN redirects (Xet /
+	// LFS presigns) are signed over the exact resource URL, including
+	// query-param order and percent-encoding.  Round-tripping through
+	// url.Values.Encode() sorts params alphabetically and re-encodes
+	// values, which invalidates the signature upstream (observed as
+	// 403 "invalid resource" from the Xet CDN bridge).  We only ever
+	// APPEND our origin marker; ExtractAndStripOrigin removes it
+	// textually on the way back for the same reason.
+	rawq := u.RawQuery
 	if origin != "" {
-		q.Set(OriginQueryParam, origin)
+		p := OriginQueryParam + "=" + url.QueryEscape(origin)
+		if rawq == "" {
+			rawq = p
+		} else {
+			rawq += "&" + p
+		}
 	}
-	if encoded := q.Encode(); encoded != "" {
-		ju.RawQuery = encoded
-	}
+	ju.RawQuery = rawq
 	return ju.String(), true
 }
 
 // ExtractAndStripOrigin removes the OriginQueryParam from rawQuery and
 // returns (origin, cleanedRawQuery).  Safe to call on any query string;
 // when the param is absent it returns ("", rawQuery) unchanged.
+//
+// The strip is textual: every byte of the remaining query is preserved
+// exactly as received.  Presigned CDN queries are signature-covered,
+// so parsing and re-encoding them (which sorts and re-escapes params)
+// breaks the signature upstream.
 func ExtractAndStripOrigin(rawQuery string) (origin, cleaned string) {
 	if rawQuery == "" || !strings.Contains(rawQuery, OriginQueryParam) {
 		return "", rawQuery
 	}
-	q, err := url.ParseQuery(rawQuery)
-	if err != nil {
-		return "", rawQuery
+	segs := strings.Split(rawQuery, "&")
+	kept := make([]string, 0, len(segs))
+	for _, s := range segs {
+		if v, ok := strings.CutPrefix(s, OriginQueryParam+"="); ok {
+			if origin == "" {
+				if dec, err := url.QueryUnescape(v); err == nil {
+					origin = dec
+				}
+			}
+			continue
+		}
+		if s == OriginQueryParam {
+			continue
+		}
+		kept = append(kept, s)
 	}
-	origin = q.Get(OriginQueryParam)
-	q.Del(OriginQueryParam)
-	return origin, q.Encode()
+	return origin, strings.Join(kept, "&")
 }

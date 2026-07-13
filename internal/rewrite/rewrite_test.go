@@ -67,6 +67,48 @@ func TestExtractAndStripOrigin(t *testing.T) {
 	}
 }
 
+// Signed CDN queries (CloudFront custom policy on the Xet bridge, S3
+// presigns on LFS) cover the resource URL byte-for-byte, including
+// query-param ORDER and exact percent-encoding.  The rewrite +
+// strip round trip must therefore never reorder or re-encode the
+// upstream params -- url.Values.Encode() does both (alphabetical sort,
+// re-escape), which the Xet CDN rejects with 403 "invalid resource".
+func TestRewriteRoundTrip_PreservesSignedQueryBytes(t *testing.T) {
+	base, _ := url.Parse("http://127.0.0.1:8080")
+	// Deliberately non-alphabetical param order and encodings that
+	// url.Values round-trips differently (%2A, %27, '+').
+	signedQuery := "response-content-disposition=inline%3B+filename%2A%3DUTF-8%27%27model.safetensors" +
+		"&X-Xet-Cas-Uid=public" +
+		"&Expires=1783981323" +
+		"&Policy=eyJTdGF0ZW1lbnQi" +
+		"&Signature=MEUCIQCQ" +
+		"&Key-Pair-Id=K123" +
+		"&user_id=public"
+	loc := "https://us.aws.cdn.hf.co/xet-bridge-us/66e8/ddfa?" + signedQuery
+	origin := "/Qwen/Qwen2.5-7B-Instruct/resolve/a09a/model-00001-of-00004.safetensors"
+
+	got, ok := LocationToProxyWithOrigin(base, allowHF, loc, origin)
+	if !ok {
+		t.Fatal("expected ok")
+	}
+	u, err := url.Parse(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantQuery := signedQuery + "&" + OriginQueryParam + "=" + url.QueryEscape(origin)
+	if u.RawQuery != wantQuery {
+		t.Fatalf("rewrite mutated signed query:\n got  %q\n want %q", u.RawQuery, wantQuery)
+	}
+
+	gotOrigin, cleaned := ExtractAndStripOrigin(u.RawQuery)
+	if gotOrigin != origin {
+		t.Fatalf("origin=%q want %q", gotOrigin, origin)
+	}
+	if cleaned != signedQuery {
+		t.Fatalf("strip mutated signed query:\n got  %q\n want %q", cleaned, signedQuery)
+	}
+}
+
 func TestExtractAndStripOrigin_Absent(t *testing.T) {
 	in := "X-Amz-Date=20260522T000000Z"
 	origin, cleaned := ExtractAndStripOrigin(in)
