@@ -79,7 +79,10 @@ jobs:
       actions: read
       id-token: write
       contents: write
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
+    # MUST be a vX.Y.Z tag, not a SHA: the generator derives its builder
+    # binary from the tag and hard-fails on commit refs. Scorecard exempts
+    # slsa-framework from hash-pinning for exactly this reason.
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
     with:
       base64-subjects: "${{ needs.goreleaser.outputs.hashes }}"
       upload-assets: true
