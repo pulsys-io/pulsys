@@ -58,7 +58,8 @@ Brings up the proxy, admin console + SSO, a Keycloak dev IdP, and Postgres.
 - Admin console: http://localhost:3000 (sign in `admin@pulsys.local` / `admin`)
 - Proxy: http://localhost:8082 — walkthrough: [`DEVELOPMENT.md`](DEVELOPMENT.md#local-development)
 
-Create a Pulsys API key in the admin UI, then point any HF client at the proxy:
+Create a Pulsys API key at [http://localhost:3000/tokens](http://localhost:3000/tokens),
+then point any HF client at the proxy:
 
 ```bash
 export HF_ENDPOINT=http://localhost:8082
