@@ -569,11 +569,23 @@ func renderSingleMetric(
 			y := plotY + plotH - barH
 			fmt.Fprintf(&b, `<rect x="%d" y="%d" width="%d" height="%d" rx="2" fill="%s"/>`,
 				bx, y, barW-2, barH, variantColor(vi))
+			labelTop := y
 			if hi > lo {
 				yLo := plotY + plotH - int(lo/yMax*float64(plotH))
 				yHi := plotY + plotH - int(hi/yMax*float64(plotH))
 				cx := bx + (barW-2)/2
 				fmt.Fprintf(&b, `<line x1="%d" x2="%d" y1="%d" y2="%d" stroke="#1c1c1e80" stroke-width="1"/>`, cx, cx, yLo, yHi)
+				if yHi < labelTop {
+					labelTop = yHi
+				}
+			}
+			// Median value above each bar: with a 4k-vs-16m payload
+			// sweep the small bars are sub-pixel on a linear axis, so
+			// without the number they read as zero.  Skip when grouped
+			// variants make the bars too narrow for the text.
+			if barW >= 48 {
+				fmt.Fprintf(&b, `<text x="%d" y="%d" text-anchor="middle" font-size="11" font-weight="600" fill="#1c1c1e">%s</text>`,
+					bx+(barW-2)/2, labelTop-6, fmtLabel(medV))
 			}
 		}
 		lx := plotX + i*groupW + groupW/2
