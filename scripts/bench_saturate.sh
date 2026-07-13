@@ -191,7 +191,7 @@ for p in $PAYLOADS; do
 	echo "- **${p}**: ${best}% avg CPU busy (target: ≥80% on small payloads for a full-machine demo)" >>"$REPORT"
 done
 
-# ----- peak Gbps from matrix.csv (HN headline) ------------------------------
+# ----- peak Gbps from matrix.csv (headline number) --------------------------
 # bytes_per_s column is human-readable (MB/GB); parse to bits/s for Gbps.
 peak_gbps="$(grep "${PULSYS_VARIANT}" "$BENCH/matrix.csv" 2>/dev/null \
 	| awk -F, '

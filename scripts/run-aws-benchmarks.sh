@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run-aws-benchmarks.sh -- one entry point for the HN-reproducible AWS suite.
+# run-aws-benchmarks.sh -- one entry point for the reproducible AWS bench suite.
 #
 # Steps (account/region come from your AWS CLI profile; nothing account-specific
 # is committed to the repo):

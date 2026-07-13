@@ -64,3 +64,4 @@ Qwen-Image-Bench/
 gemma-4-31B-it/
 *.safetensors
 *.gguf
+.cursor/
