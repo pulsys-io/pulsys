@@ -17,9 +17,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/pulsys-io/pulsys/internal/blobstore"
 	"github.com/pulsys-io/pulsys/internal/registry"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // isSerializationFailure returns true for Postgres 40001 errors,

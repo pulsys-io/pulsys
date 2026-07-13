@@ -205,8 +205,9 @@ func TestSlowloris_PerIPCap_RejectsExcess(t *testing.T) {
 	})
 
 	// Give the accept loop time to register all cap connections on loaded CI
-	// runners (Linux + -race is slower than the prior 50ms margin).
-	time.Sleep(200 * time.Millisecond)
+	// runners (Linux + -race is slower than the prior 50ms margin; shared
+	// GitHub runners have been observed to need more than 200ms).
+	time.Sleep(500 * time.Millisecond)
 
 	// The (cap+1)th dial succeeds at the TCP layer (the kernel
 	// completes the 3-way handshake before our accept-loop
@@ -235,9 +236,20 @@ func TestSlowloris_PerIPCap_RejectsExcess(t *testing.T) {
 	// Drop counter must advance by at least 1 (the overflow
 	// dial).  Other tests in the same binary may have also
 	// dropped connections, so we assert >=, not ==.
-	after := telemetry.ProxyPerIPCapDroppedSnapshot()
-	if after-before < 1 {
-		t.Fatalf("pulsys_proxy_per_ip_cap_dropped did not advance: before=%d after=%d", before, after)
+	//
+	// The accept loop increments the counter AFTER closing the
+	// over-cap fd, so the client can observe EOF before the
+	// increment lands; poll briefly instead of snapshotting once.
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		after := telemetry.ProxyPerIPCapDroppedSnapshot()
+		if after-before >= 1 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("pulsys_proxy_per_ip_cap_dropped did not advance: before=%d after=%d", before, after)
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 

@@ -6,10 +6,10 @@ package observability
 import (
 	"net/http"
 
-	"github.com/pulsys-io/pulsys/internal/db"
-	"github.com/pulsys-io/pulsys/internal/telemetry"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/pulsys-io/pulsys/internal/db"
+	"github.com/pulsys-io/pulsys/internal/telemetry"
 )
 
 // Registry holds Pulsys Prometheus collectors.

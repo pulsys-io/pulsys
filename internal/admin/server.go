@@ -6,6 +6,8 @@ package admin
 import (
 	"net/http"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pulsys-io/pulsys/internal/admin/api"
 	"github.com/pulsys-io/pulsys/internal/admin/audit"
 	adminstore "github.com/pulsys-io/pulsys/internal/admin/store"
@@ -16,8 +18,6 @@ import (
 	"github.com/pulsys-io/pulsys/internal/cache"
 	"github.com/pulsys-io/pulsys/internal/db"
 	"github.com/pulsys-io/pulsys/internal/observability"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 )
 

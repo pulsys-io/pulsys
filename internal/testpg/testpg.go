@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
-	pdb "github.com/pulsys-io/pulsys/internal/db"
 	"github.com/jackc/pgx/v5/pgxpool"
+	pdb "github.com/pulsys-io/pulsys/internal/db"
 )
 
 // envDSN is the explicit DSN env var. Must support CREATEDB.

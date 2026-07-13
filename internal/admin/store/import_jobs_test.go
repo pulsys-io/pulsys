@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pulsys-io/pulsys/internal/admin/store"
 	"github.com/pulsys-io/pulsys/internal/auth"
 	"github.com/pulsys-io/pulsys/internal/db"
 	"github.com/pulsys-io/pulsys/internal/importer"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 )

@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pulsys-io/pulsys/internal/auth"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pulsys-io/pulsys/internal/auth"
 )
 
 // PG implements auth.Store against Postgres.

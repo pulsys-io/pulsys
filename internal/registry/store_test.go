@@ -11,9 +11,9 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pulsys-io/pulsys/internal/blobstore"
 	"github.com/pulsys-io/pulsys/internal/testpg"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // testPool returns a pgxpool against a fresh, fully-migrated test

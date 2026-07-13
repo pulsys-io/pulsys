@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pulsys-io/pulsys/internal/admin/api"
 	adminstore "github.com/pulsys-io/pulsys/internal/admin/store"
 	"github.com/pulsys-io/pulsys/internal/auth"
 	authstore "github.com/pulsys-io/pulsys/internal/auth/store"
 	"github.com/pulsys-io/pulsys/internal/testpg"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // fixtures stands up an isolated Postgres + a real admin API
