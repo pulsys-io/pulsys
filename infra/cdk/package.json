@@ -19,7 +19,7 @@
     "constructs": "^10.3.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^26.1.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.0"
   },
