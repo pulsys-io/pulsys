@@ -1,0 +1,33 @@
+# Automated SemVer releases.
+#
+# On every push to main, release-please maintains a "release PR" that updates
+# CHANGELOG.md + the version in .release-please-manifest.json from the
+# Conventional-Commit history. Merging that PR creates the git tag + GitHub
+# release, which in turn triggers release.yml (GoReleaser).
+#
+# Stays on v0.x.y until the API/CLI stabilizes (bump-minor-pre-major).
+# NOTE: actions are SHA-pinned in the supply-chain hardening pass.
+
+name: release-please
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

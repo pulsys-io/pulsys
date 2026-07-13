@@ -1,0 +1,92 @@
+{{ template "chart.header" . }}
+
+{{ template "chart.deprecationWarning" . }}
+
+{{ template "chart.badgesSection" . }}
+
+{{ template "chart.description" . }}
+
+`pulsys` is a high-performance, disk-caching reverse proxy for the Hugging
+Face Hub. Point any HF client at it (`HF_ENDPOINT=...`) and downloads are served
+from a local cache at line rate. Pulsys is authenticated by default: the
+**Pulsys admin plane** (OIDC login, RBAC, audit log, model imports) is required,
+so every data-plane request carries a per-request Pulsys API key.
+
+> This chart is also published to an OCI registry:
+> `oci://ghcr.io/pulsys-io/charts/pulsys`.
+
+## TL;DR
+
+```bash
+# Pulsys is authenticated by default. Provide an external Postgres and a Secret
+# holding a read-only Hugging Face token, then install:
+kubectl create secret generic pulsys-hf --from-literal=token=hf_your_readonly_token
+
+helm install pulsys oci://ghcr.io/pulsys-io/charts/pulsys \
+  --set proxy.publicBaseURL=https://hf.example.com \
+  --set admin.enabled=true \
+  --set postgres.host=postgres.db.svc \
+  --set admin.imports.hfTokenSecret=pulsys-hf
+
+# Issue a Pulsys API key in the admin UI, then:
+HF_ENDPOINT=http://<proxy-host>:8080 HF_TOKEN=pulsys_... hf download gpt2
+```
+
+## Deployment requirements
+
+Pulsys has no open mode. The chart requires:
+
+- `admin.enabled=true`: the admin plane that issues and enforces API keys (off by default so a bare install fails fast).
+- An EXTERNAL PostgreSQL database (this chart never bundles one): set `postgres.host`, `postgres.existingSecret`, or `postgres.dsn`.
+- `admin.imports.hfTokenSecret`: a Secret (key `token`) with Pulsys's read-only Hugging Face token.
+
+A bare `helm install` fails fast with actionable messages until these are set.
+For the admin plane database we recommend the [CloudNativePG](https://cloudnative-pg.io)
+operator. See [`examples/cnpg-cluster.yaml`](examples/cnpg-cluster.yaml).
+
+## Admin plane with CloudNativePG
+
+```bash
+# 1. Install the CNPG operator (once per cluster), then apply a Cluster:
+kubectl apply -f examples/cnpg-cluster.yaml
+
+# 2. Install the chart pointing at the CNPG-generated app Secret:
+helm install pulsys oci://ghcr.io/pulsys-io/charts/pulsys \
+  --set proxy.publicBaseURL=https://hf.example.com \
+  --set admin.enabled=true \
+  --set postgres.existingSecret=pulsys-pg-app \
+  --set postgres.existingSecretKey=uri \
+  --set oidc.enabled=true \
+  --set oidc.issuer=https://idp.example.com/realms/pulsys \
+  --set oidc.redirectURI=https://hf.example.com/auth/oidc/callback \
+  --set oidc.existingSecret=pulsys-oidc
+```
+
+OIDC values map 1:1 to the IdP setup guides in
+[`docs/oidc.md`](https://github.com/pulsys-io/pulsys/blob/main/docs/oidc.md) (Keycloak,
+AWS Cognito, AWS IAM Identity Center).
+
+## Ports
+
+| Port | Name | Purpose |
+| ---- | ---- | ------- |
+| `8080` | `http` | Data-plane ingress (HF cache). Serves `/healthz`. |
+| `6060` | `admin` | Admin API (`/admin/api/v1`), `/metrics`, `/healthz`. Keep internal. |
+
+{{ template "chart.maintainersSection" . }}
+
+{{ template "chart.sourcesSection" . }}
+
+{{ template "chart.requirementsSection" . }}
+
+{{ template "chart.valuesSection" . }}
+
+## Verifying an install
+
+```bash
+helm test <release> --namespace <namespace>
+```
+
+The bundled test hits `/healthz` on both the data-plane and admin ports.
+
+{{ template "helm-docs.versionFooter" . }}

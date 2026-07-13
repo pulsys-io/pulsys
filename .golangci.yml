@@ -1,0 +1,42 @@
+# golangci-lint configuration (v2 schema).
+# A curated, low-false-positive set focused on correctness and security.
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - bodyclose
+    - misspell
+    - unconvert
+    - whitespace
+  settings:
+    misspell:
+      locale: US
+  exclusions:
+    paths:
+      - internal/coreserver/vendor
+      - (^|/)node_modules($|/)
+    rules:
+      # Tests intentionally ignore some errors and response bodies.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - bodyclose
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    paths:
+      - internal/coreserver/vendor
+      - (^|/)node_modules($|/)

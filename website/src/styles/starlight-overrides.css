@@ -1,0 +1,4 @@
+/** Starlight tweaks to sit beside the marketing site palette. */
+:root {
+  --sl-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}

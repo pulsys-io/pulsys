@@ -1,0 +1,27 @@
+# Sync the repository label taxonomy from .github/labels.yml.
+# NOTE: actions are SHA-pinned in the supply-chain hardening pass.
+
+name: labels
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/labels.yml'
+      - '.github/workflows/labels.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: sync labels
+        uses: EndBug/label-sync@52074158190acb45f3077f9099fea818aa43f97a # v2
+        with:
+          config-file: .github/labels.yml
+          delete-other-labels: false

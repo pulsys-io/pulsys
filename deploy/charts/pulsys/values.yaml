@@ -1,0 +1,234 @@
+# Default values for pulsys.
+#
+# Pulsys has no open mode: the admin plane is required and is enabled by
+# default. It needs an EXTERNAL PostgreSQL database (this chart never bundles
+# one; see examples/cnpg-cluster.yaml) and a Secret holding Pulsys's read-only
+# Hugging Face token (admin.imports.hfTokenSecret). A bare `helm install` fails
+# fast with actionable messages until both are configured.
+
+# -- Number of proxy replicas. Must be 1: in-flight de-duplication and cache
+# coordination are per-process, so multi-replica deployments are not supported
+# (see ROADMAP.md for horizontal scale-out).
+replicaCount: 1
+
+image:
+  # -- Container image repository for the pulsys binary.
+  repository: ghcr.io/pulsys-io/pulsys
+  # -- Image pull policy.
+  pullPolicy: IfNotPresent
+  # -- Image tag. Defaults to the chart's appVersion when empty.
+  tag: ""
+
+# -- Image pull secrets for private registries.
+imagePullSecrets: []
+# -- Override the chart name.
+nameOverride: ""
+# -- Override the fully qualified app name.
+fullnameOverride: ""
+
+serviceAccount:
+  # -- Create a ServiceAccount.
+  create: true
+  # -- Annotations for the ServiceAccount (e.g. an IRSA / Workload Identity role ARN).
+  annotations: {}
+  # -- Name of the ServiceAccount to use. Generated when empty and create=true.
+  name: ""
+  # -- Automount the ServiceAccount API token.
+  automountServiceAccountToken: false
+
+# -- Annotations added to the Pod.
+podAnnotations: {}
+# -- Labels added to the Pod.
+podLabels: {}
+
+# -- Pod-level security context. Defaults run the process as an unprivileged
+# user with a writable cache volume.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+# -- Container-level security context.
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+proxy:
+  # -- Public base URL used to rewrite upstream Location headers. REQUIRED.
+  # Set to the externally reachable URL of the proxy (scheme + host[:port]).
+  publicBaseURL: ""
+  # -- Log level: debug, info, warn, error.
+  logLevel: info
+  # -- On-disk cache directory (mounted from persistence).
+  cacheDir: /var/lib/pulsys/cache
+  # -- Default upstream host.
+  defaultUpstreamHost: huggingface.co
+  # -- Upstream scheme: https (production) or http (test against a local fake).
+  upstreamScheme: https
+  # -- Override the upstream host allowlist (comma-joined). Empty uses the
+  # built-in Hugging Face allowlist.
+  allowHosts: []
+  # -- Maximum total on-disk cache bytes; 0 leaves the cache unbounded.
+  cacheMaxBytes: 0
+  # -- Extra raw CLI flags appended to the pulsys command (e.g. tuning flags
+  # like "-listeners=8" or "-iouring").
+  extraArgs: []
+  # -- Extra environment variables (list of name/value or name/valueFrom).
+  extraEnv: []
+
+service:
+  # -- Service type for the data-plane ingress.
+  type: ClusterIP
+  # -- Data-plane (proxy) service port.
+  port: 8080
+  # -- Admin/metrics service port (auth, /admin/api/v1, /metrics). Kept on a
+  # separate port so it can be scoped away from the public data plane.
+  adminPort: 6060
+  # -- NodePort for the data-plane port when type=NodePort.
+  nodePort: null
+  # -- Extra annotations for the Service.
+  annotations: {}
+
+persistence:
+  # -- Provision a PersistentVolumeClaim for the cache.
+  enabled: true
+  # -- Use an existing PVC instead of creating one.
+  existingClaim: ""
+  # -- StorageClass; empty uses the cluster default.
+  storageClass: ""
+  # -- Access modes for the cache PVC.
+  accessModes:
+    - ReadWriteOnce
+  # -- Requested cache volume size.
+  size: 100Gi
+  # -- Extra annotations on the PVC.
+  annotations: {}
+
+ingress:
+  # -- Create an Ingress for the data plane.
+  enabled: false
+  # -- IngressClass name.
+  className: ""
+  # -- Ingress annotations.
+  annotations: {}
+  # -- Ingress host rules.
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: Prefix
+  # -- TLS configuration.
+  tls: []
+
+# -- Compute resource requests/limits.
+resources:
+  requests:
+    cpu: 250m
+    memory: 128Mi
+  limits:
+    memory: 1Gi
+
+# -- Liveness/readiness probe configuration (HTTP GET /healthz on the proxy port).
+probes:
+  liveness:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    initialDelaySeconds: 3
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# -- Node selector.
+nodeSelector: {}
+# -- Tolerations.
+tolerations: []
+# -- Affinity rules.
+affinity: {}
+# -- Topology spread constraints.
+topologySpreadConstraints: []
+
+metrics:
+  serviceMonitor:
+    # -- Create a Prometheus Operator ServiceMonitor scraping /metrics on the admin port.
+    enabled: false
+    # -- Extra labels for the ServiceMonitor (e.g. to match a Prometheus selector).
+    labels: {}
+    # -- Scrape interval.
+    interval: 30s
+
+# =============================================================================
+# Pulsys admin plane (required). Requires an EXTERNAL PostgreSQL database.
+# =============================================================================
+admin:
+  # -- Enable the Pulsys admin plane (OIDC, RBAC, audit, imports). Required:
+  # Pulsys has no open mode, so the chart refuses to render with this false.
+  # Off by default so a bare `helm install` fails fast with that message.
+  enabled: false
+  # -- Tenant name used by the admin plane.
+  tenant: default
+  init:
+    # -- Run initContainers on the proxy Deployment that migrate the database,
+    # ensure the tenant, and (when oidc.enabled) configure the OIDC provider
+    # before the proxy starts. Migrations are lock-guarded and safe when pod starts overlap.
+    enabled: true
+  imports:
+    # -- Run the background model-import worker in the proxy process.
+    worker: true
+    # -- Max concurrent import fetch workers; empty uses 2*GOMAXPROCS.
+    maxWorkers: ""
+    # -- Per-job import timeout (Go duration); empty uses 24h.
+    jobTimeout: ""
+    # -- REQUIRED. Name of an existing Secret holding Pulsys's read-only Hugging
+    # Face token under key `token`. Sets PULSYS_HF_TOKEN, used for all upstream
+    # auth (cold-miss reads + imports). Pulsys refuses to start without it.
+    hfTokenSecret: ""
+
+# Postgres connection for the admin plane. Provide EITHER a full DSN, an
+# existingSecret, or the individual fields below (the chart assembles the DSN).
+postgres:
+  # -- Full Postgres DSN. Highest precedence. Use existingSecret in production.
+  dsn: ""
+  # -- Existing Secret containing the DSN; preferred for production / CNPG.
+  existingSecret: ""
+  # -- Key within existingSecret holding the DSN.
+  existingSecretKey: dsn
+  # -- Individual connection fields (used to assemble a DSN when dsn and
+  # existingSecret are both empty). `password` is rendered into a Secret.
+  host: ""
+  port: 5432
+  user: pulsys
+  password: ""
+  database: pulsys
+  sslmode: require
+
+# OIDC for the admin console. Maps 1:1 to docs/oidc.md (Keycloak, AWS Cognito,
+# AWS IAM Identity Center). Stored in the database by the init Job.
+oidc:
+  # -- Enable OIDC login for the admin console.
+  enabled: false
+  # -- OIDC issuer URL (browser-facing; validated against the id_token `iss`).
+  issuer: ""
+  # -- Backchannel discovery base used by the proxy to reach the IdP in-cluster
+  # (PULSYS_OIDC_DISCOVERY_BASE). Empty falls back to the issuer.
+  discoveryBase: ""
+  # -- OAuth redirect URI registered with the IdP.
+  redirectURI: ""
+  # -- OIDC client ID.
+  clientID: pulsys-admin
+  # -- OIDC client secret. Prefer existingSecret in production.
+  clientSecret: ""
+  # -- Existing Secret holding the OIDC client secret under `client-secret`.
+  existingSecret: ""
+  # -- Group(s) mapped to the tenant owner role, comma-joined.
+  ownerGroups: "pulsys:owner"

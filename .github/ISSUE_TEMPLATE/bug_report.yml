@@ -1,0 +1,76 @@
+name: Bug report
+description: Report a problem with pulsys
+title: "bug: "
+labels: ["type/bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report!
+
+        Please do **not** report security vulnerabilities here. See
+        [SECURITY.md](https://github.com/pulsys-io/pulsys/blob/main/SECURITY.md)
+        for private disclosure.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight checklist
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: This is not a security vulnerability (those go through SECURITY.md).
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: pulsys version
+      description: Output of `pulsys -version`, the image tag, or the chart version.
+      placeholder: "v0.1.0 / ghcr.io/pulsys-io/pulsys:v0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Data plane (cache / proxy)
+        - Admin plane (Pulsys)
+        - Helm chart
+        - Benchmark harness (infra/cdk)
+        - CLI (pulsys-db)
+        - Docs
+        - Other / not sure
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, including the actual vs. expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal, deterministic steps. Include the exact commands and any client (hf CLI / huggingface_hub) versions.
+      placeholder: |
+        1. Run `pulsys -listen :8080 -cache-dir ./c ...`
+        2. `HF_ENDPOINT=http://localhost:8080 hf download ...`
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS + arch, kernel (for io_uring paths), deployment method (docker / binary / helm / EKS).
+      placeholder: "Ubuntu 24.04, x86_64, kernel 6.8, Helm chart on EKS 1.31"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste logs or stack traces. They are automatically formatted as code.
+      render: shell

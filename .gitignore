@@ -1,0 +1,65 @@
+# Bench harness scratch + binaries + raw output
+# Also: tmp/competitors/ holds read-only clones of competitor repos for
+# UX comparison and parity-bench scripting; never push to remote.
+tmp/
+
+# Local Go build outputs (bin/pulsys, bin/pulsys-db, etc.)
+bin/
+
+# Go test / build cache (generally outside repo, but defensive)
+*.test
+*.prof
+*.pb.gz
+*.cover
+coverage.out
+
+# IDE / OS scratch
+.DS_Store
+.idea/
+.vscode/
+
+# Packer build outputs
+infra/packer/.tarball/
+infra/packer/manifest.json
+infra/packer/packer_cache/
+infra/packer/crash.log
+
+# CDK build outputs
+infra/cdk/cdk.out/
+infra/cdk/cdk.context.json
+infra/cdk/node_modules/
+infra/cdk/*.js
+infra/cdk/*.d.ts
+infra/cdk/.cdk.staging/
+
+# Marketing site (generated assets + build)
+website/node_modules/
+website/dist/
+website/.astro/
+website/public/results/
+# Playwright test artifacts (screenshots, traces, last-run state) -- never commit
+website/test-results/
+website/playwright-report/
+
+# Node deps (any workspace)
+node_modules/
+
+# Abandoned BYOC / control-plane prototypes (kept out of the OSS tree)
+control-plane/
+deploy/cdk/
+
+# AWS reference deploy + e2e scratch (Phase 5). The account id and any
+# context lookups must never be committed to a public repo.
+deploy/aws/cdk.out/
+deploy/aws/cdk.context.json
+cdk.out/
+cdk.context.json
+scripts/aws-e2e/.run.log
+.next/
+
+# Downloaded model fixtures (never commit weights)
+Qwen2.5-0.5B/
+Qwen-Image-Bench/
+gemma-4-31B-it/
+*.safetensors
+*.gguf

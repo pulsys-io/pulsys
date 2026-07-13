@@ -1,0 +1,55 @@
+suite: admin plane secrets
+templates:
+  - templates/db-secret.yaml
+  - templates/oidc-secret.yaml
+tests:
+  - it: renders no db or OIDC Secret when the admin plane is disabled
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: assembles a DSN Secret from postgres fields
+    template: templates/db-secret.yaml
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      admin.enabled: true
+      postgres.host: pg.internal
+      postgres.user: pulsys
+      postgres.password: s3cret
+      postgres.database: pulsys
+      postgres.sslmode: require
+    asserts:
+      - isKind:
+          of: Secret
+      - equal:
+          path: stringData.dsn
+          value: postgres://pulsys:s3cret@pg.internal:5432/pulsys?sslmode=require
+
+  - it: does NOT render a db Secret when existingSecret is set
+    template: templates/db-secret.yaml
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      admin.enabled: true
+      postgres.existingSecret: my-cnpg-app
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders an OIDC client-secret Secret when not using existingSecret
+    template: templates/oidc-secret.yaml
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      admin.enabled: true
+      postgres.host: pg
+      oidc.enabled: true
+      oidc.issuer: https://idp.example.com/realms/pulsys
+      oidc.redirectURI: https://hf.example.com/auth/oidc/callback
+      oidc.clientSecret: top-secret
+    asserts:
+      - isKind:
+          of: Secret
+      - equal:
+          path: stringData.client-secret
+          value: top-secret

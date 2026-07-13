@@ -1,0 +1,13 @@
+server,payload,scenario,concurrency,round,reqs_per_s,bytes_per_s,p50,p90,p99,p99_9,total_reqs,total_bytes,timeouts,duration_s
+pulsys-saturate-no-cork,4k,warm,192,1,1174848.29,4.64GB,112.00us,571.00us,6.93ms,0us,35312791,0B,0,30.06
+pulsys-saturate-no-cork,4k,warm,192,2,1228200.82,4.85GB,105.00us,635.00us,6.65ms,0us,36920779,0B,0,30.06
+pulsys-saturate-no-cork,4k,warm,192,3,1190918.78,4.71GB,108.00us,607.00us,5.14ms,0us,35847028,0B,0,30.10
+pulsys-saturate-no-cork,256k,warm,192,1,261759.79,63.94GB,565.00us,1.37ms,2.23ms,0us,7866135,0B,0,30.05
+pulsys-saturate-no-cork,256k,warm,192,2,258045.02,63.04GB,574.00us,1.41ms,2.31ms,0us,7752786,0B,0,30.04
+pulsys-saturate-no-cork,256k,warm,192,3,259365.77,63.36GB,573.00us,1.38ms,2.20ms,0us,7791804,0B,0,30.04
+pulsys-saturate-no-cork,4m,warm,192,1,21952.92,85.76GB,6.77ms,14.05ms,24.51ms,0us,660773,0B,0,30.10
+pulsys-saturate-no-cork,4m,warm,192,2,23165.23,90.49GB,6.38ms,12.88ms,22.27ms,0us,697200,0B,0,30.10
+pulsys-saturate-no-cork,4m,warm,192,3,22492.48,87.87GB,6.61ms,13.35ms,23.25ms,0us,677014,0B,0,30.10
+pulsys-saturate-no-cork,16m,warm,192,1,5823.44,91.00GB,26.84ms,54.59ms,83.56ms,0us,175228,0B,0,30.09
+pulsys-saturate-no-cork,16m,warm,192,2,6091.03,95.18GB,25.53ms,52.10ms,79.29ms,0us,183362,0B,0,30.10
+pulsys-saturate-no-cork,16m,warm,192,3,5847.07,91.38GB,26.77ms,54.31ms,82.11ms,0us,176056,0B,0,30.11

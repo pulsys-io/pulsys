@@ -1,0 +1,147 @@
+# GoReleaser configuration. Fired by .github/workflows/release.yml on the tag
+# that release-please creates. Produces multi-arch binaries + archives +
+# checksums, SBOMs, cosign signatures, and multi-arch GHCR images.
+# Docs: https://goreleaser.com
+version: 2
+
+project_name: pulsys
+
+before:
+  hooks:
+    # Intentionally NOT `go mod tidy`: tidy scans the filesystem and would pull
+    # stray node_modules Go init-templates into go.mod.
+    - go mod download
+
+builds:
+  - id: pulsys
+    main: ./cmd/pulsys
+    binary: pulsys
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .ShortCommit }}
+      - -X main.date={{ .CommitDate }}
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+  - id: pulsys-db
+    main: ./cmd/pulsys-db
+    binary: pulsys-db
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags: [-s -w]
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: default
+    builds: [pulsys, pulsys-db]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - NOTICE
+      - README.md
+      - THIRD-PARTY-LICENSES.md
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+# release-please owns the changelog; do not let GoReleaser regenerate it.
+changelog:
+  disable: true
+
+# SBOMs (CycloneDX via syft) for every archive.
+sboms:
+  - id: archive
+    artifacts: archive
+
+# Keyless cosign signatures over the checksums file and SBOMs.
+signs:
+  - cmd: cosign
+    certificate: "${artifact}.pem"
+    args:
+      - sign-blob
+      - "--output-certificate=${certificate}"
+      - "--output-signature=${signature}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+    output: true
+
+dockers:
+  - id: pulsys-amd64
+    goos: linux
+    goarch: amd64
+    ids: [pulsys, pulsys-db]
+    dockerfile: deploy/docker/Dockerfile.goreleaser
+    use: buildx
+    image_templates:
+      - "ghcr.io/pulsys-io/pulsys:{{ .Version }}-amd64"
+      - "ghcr.io/pulsys-io/pulsys:latest-amd64"
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.source=https://github.com/pulsys-io/pulsys"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.licenses=Apache-2.0"
+  - id: pulsys-arm64
+    goos: linux
+    goarch: arm64
+    ids: [pulsys, pulsys-db]
+    dockerfile: deploy/docker/Dockerfile.goreleaser
+    use: buildx
+    image_templates:
+      - "ghcr.io/pulsys-io/pulsys:{{ .Version }}-arm64"
+      - "ghcr.io/pulsys-io/pulsys:latest-arm64"
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.source=https://github.com/pulsys-io/pulsys"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.licenses=Apache-2.0"
+
+docker_manifests:
+  - name_template: "ghcr.io/pulsys-io/pulsys:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/pulsys-io/pulsys:{{ .Version }}-amd64"
+      - "ghcr.io/pulsys-io/pulsys:{{ .Version }}-arm64"
+  - name_template: "ghcr.io/pulsys-io/pulsys:latest"
+    image_templates:
+      - "ghcr.io/pulsys-io/pulsys:latest-amd64"
+      - "ghcr.io/pulsys-io/pulsys:latest-arm64"
+
+# Keyless cosign signatures over the published images.
+docker_signs:
+  - cmd: cosign
+    args: ["sign", "--yes", "${artifact}@${digest}"]
+    artifacts: all
+    output: true
+
+release:
+  github:
+    owner: pulsys-io
+    name: pulsys
+  prerelease: auto
+  mode: append
+  footer: |
+    ---
+    Release artifacts are signed with [cosign](https://github.com/sigstore/cosign)
+    (keyless) and ship CycloneDX SBOMs. Verify the checksums:
+
+    ```
+    cosign verify-blob \
+      --certificate checksums.txt.pem \
+      --signature checksums.txt.sig \
+      --certificate-identity-regexp 'https://github.com/pulsys-io/pulsys/.*' \
+      --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+      checksums.txt
+    ```

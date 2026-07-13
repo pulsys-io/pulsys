@@ -1,0 +1,6 @@
+{"version": 2, "width": 52, "height": 8, "timestamp": 1778997845, "idle_time_limit": 1.5, "env": {"SHELL": "/bin/zsh", "TERM": "xterm-256color"}}
+[0.5, "o", "$ export HF_ENDPOINT=http://localhost:8082\r\n"]
+[1.0, "o", "$ export HF_TOKEN=pulsys_...\r\n"]
+[1.5, "o", "$ hf download Qwen/Qwen2.5-7B-Instruct\r\n"]
+[2.2, "o", "Resolving data files...\r\n"]
+[3.5, "o", "Download complete (warm cache hit)\r\n"]

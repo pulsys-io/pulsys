@@ -1,0 +1,3 @@
+[submodule "internal/coreserver/vendor/llhttp"]
+	path = internal/coreserver/vendor/llhttp
+	url = https://github.com/nodejs/llhttp.git

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & ideas (Discussions)
+    url: https://github.com/pulsys-io/pulsys/discussions
+    about: Ask questions, share use cases, and discuss ideas before filing an issue.
+  - name: Report a security vulnerability
+    url: https://github.com/pulsys-io/pulsys/security/policy
+    about: Please disclose vulnerabilities privately. Do not open a public issue.

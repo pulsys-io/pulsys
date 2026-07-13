@@ -1,0 +1,83 @@
+# Dockerfile.security-tests -- Phase 4.5 of the OWASP WSTG
+# hardening pass.
+#
+# PURPOSE
+#   The Phase 0-4 security tests were authored and validated
+#   on macOS / Darwin.  Two production code paths only exist
+#   on Linux and were therefore exercised ONLY by their unit
+#   tests, never by the end-to-end security matrix:
+#
+#     * internal/coreserver/iouring_parser_linux.go (the
+#       Linux-mirror of the hand-rolled HTTP/1.1 parser
+#       used by the io_uring reactor)
+#     * internal/coreserver/iouring_reactor_linux.go (the
+#       Linux-only request/response pipeline that talks to
+#       io_uring directly, bypassing the Go netpoller)
+#
+#   This image runs the full security test matrix on a Linux
+#   kernel against a real Postgres sidecar (so authcontract
+#   tests cover their RLS-bound surface) with the io_uring
+#   path forced ON via PULSYS_TEST_IOURING=1.
+#
+#   The image is correctness-only.  Performance numbers are
+#   not trustworthy from a Docker Desktop VM; that lives in
+#   scripts/bench_matrix.sh on metal.
+#
+# KERNEL REQUIREMENTS
+#   io_uring + IORING_SETUP_DEFER_TASKRUN need kernel >= 6.1.
+#   The image is bookworm-slim which uses the host kernel via
+#   docker; on macOS, Docker Desktop / OrbStack ship 6.x.  The
+#   image checks `uname -r` at startup and refuses to run if
+#   the kernel is too old AND PULSYS_TEST_IOURING_REQUIRE=1.
+#
+# USAGE
+#   docker compose -f docker-compose.security-tests.yml up \
+#     --build --abort-on-container-exit \
+#     --exit-code-from security-tests
+#
+#   Or via the wrapper:
+#     scripts/security-tests-linux.sh
+
+FROM golang:1.25-bookworm
+
+# Postgres client libraries for testpg DSN-bound tests (not
+# strictly required by lib/pq, but pgx pulls them in for
+# COPY operations and they're small).
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        postgresql-client \
+        netcat-openbsd && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+
+COPY go.mod go.sum* ./
+RUN go mod download
+
+COPY . .
+
+# Build the test binaries upfront so the actual `go test` run
+# spends its time executing, not compiling.  Failing here means
+# the build fails on Linux; failing later means the runtime
+# does.  Both are valuable signal.
+RUN go vet ./...
+RUN go build ./...
+
+# The runner script:
+#   1. Waits for the postgres sidecar to accept connections.
+#   2. Prints kernel + go versions for the test log header.
+#   3. Runs the security-relevant package set with -race.
+#   4. Exits non-zero on any failure.
+#
+# The set of packages run is intentionally specific (NOT
+# `./...`) because:
+#
+#   - We want the Phase 0-4 surface specifically, not the
+#     full bench suite or admin-ui tests.
+#   - Faster feedback loop for the Linux CI signal.
+#   - The whole suite already runs in .github/workflows/linux.yml.
+COPY scripts/security-tests-entrypoint.sh /usr/local/bin/security-tests-entrypoint
+RUN chmod +x /usr/local/bin/security-tests-entrypoint
+
+ENTRYPOINT ["/usr/local/bin/security-tests-entrypoint"]

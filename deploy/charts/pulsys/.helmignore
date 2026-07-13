@@ -1,0 +1,13 @@
+# Patterns to ignore when building packages.
+.DS_Store
+.git/
+.gitignore
+*.tmproj
+.vscode/
+.idea/
+# Test + tooling assets that should not ship inside the packaged chart.
+ci/
+tests/
+*_test.yaml
+README.md.gotmpl
+.helm-docs.yaml

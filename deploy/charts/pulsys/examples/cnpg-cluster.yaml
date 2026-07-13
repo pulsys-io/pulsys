@@ -1,0 +1,33 @@
+# Recommended in-cluster Postgres for the pulsys admin plane, using the
+# CloudNativePG (CNPG) operator. pulsys deliberately does NOT bundle a
+# database subchart; you own the database lifecycle.
+#
+# 1. Install the CNPG operator (once per cluster):
+#      kubectl apply --server-side -f \
+#        https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.24/releases/cnpg-1.24.1.yaml
+#
+# 2. Apply this Cluster:
+#      kubectl apply -f cnpg-cluster.yaml
+#
+# 3. Point the chart at the CNPG-generated app Secret (it contains a ready
+#    `uri` key with the full DSN):
+#      helm install pulsys oci://ghcr.io/pulsys-io/charts/pulsys \
+#        --set proxy.publicBaseURL=https://hf.example.com \
+#        --set admin.enabled=true \
+#        --set postgres.existingSecret=pulsys-pg-app \
+#        --set postgres.existingSecretKey=uri
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pulsys-pg
+spec:
+  instances: 3
+  storage:
+    size: 10Gi
+  bootstrap:
+    initdb:
+      database: pulsys
+      owner: pulsys
+  # CNPG creates a Secret named "<cluster>-app" with keys: username, password,
+  # dbname, host, port, and a ready-to-use `uri` (DSN). Use that `uri` key.

@@ -1,0 +1,47 @@
+# Full Pulsys admin plane (OIDC, RBAC, audit, imports) backed by a CNPG
+# Postgres Cluster (see cnpg-cluster.yaml) and OIDC login.
+#
+#   helm install pulsys oci://ghcr.io/pulsys-io/charts/pulsys -f values-admin-cnpg.yaml
+proxy:
+  publicBaseURL: https://hf.example.com
+
+admin:
+  enabled: true
+  tenant: default
+  imports:
+    worker: true
+    # Reference an existing Secret with a Hugging Face token (key: token) for
+    # gated-repo imports.
+    hfTokenSecret: hf-token
+
+# Point at the CNPG-generated app Secret's `uri` key (full DSN).
+postgres:
+  existingSecret: pulsys-pg-app
+  existingSecretKey: uri
+
+oidc:
+  enabled: true
+  issuer: https://idp.example.com/realms/pulsys
+  redirectURI: https://hf.example.com/auth/oidc/callback
+  clientID: pulsys-admin
+  # Prefer an existing Secret in production (key: client-secret).
+  existingSecret: pulsys-oidc
+  ownerGroups: "pulsys:owner"
+
+persistence:
+  enabled: true
+  size: 500Gi
+  storageClass: gp3
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: hf.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: pulsys-tls
+      hosts:
+        - hf.example.com

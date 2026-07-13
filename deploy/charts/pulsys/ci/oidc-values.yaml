@@ -1,0 +1,32 @@
+# ct / kind scenario: admin plane + OIDC login enabled.
+proxy:
+  publicBaseURL: https://hf.example.com
+admin:
+  enabled: true
+  tenant: default
+  imports:
+    hfTokenSecret: pulsys-hf
+postgres:
+  host: pulsys-pg-rw
+  port: 5432
+  user: pulsys
+  password: pulsys
+  database: pulsys
+  sslmode: require
+oidc:
+  enabled: true
+  issuer: https://idp.example.com/realms/pulsys
+  discoveryBase: http://keycloak.default.svc.cluster.local:8080/realms/pulsys
+  redirectURI: https://hf.example.com/auth/oidc/callback
+  clientID: pulsys-admin
+  clientSecret: test-only-not-a-real-secret
+  ownerGroups: pulsys:owner
+persistence:
+  enabled: true
+  size: 1Gi
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi

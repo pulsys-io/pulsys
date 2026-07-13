@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pulsys.fullname" . }}
+  labels:
+    {{- include "pulsys.labels" . | nindent 4 }}
+data:
+  # Non-secret proxy configuration. Rendered into a ConfigMap so its checksum
+  # drives a rollout when any of these values change. The proxy reads these
+  # via CLI args; this is the canonical, auditable record of the running config.
+  publicBaseURL: {{ .Values.proxy.publicBaseURL | quote }}
+  logLevel: {{ .Values.proxy.logLevel | quote }}
+  cacheDir: {{ .Values.proxy.cacheDir | quote }}
+  upstreamScheme: {{ .Values.proxy.upstreamScheme | quote }}
+  defaultUpstreamHost: {{ .Values.proxy.defaultUpstreamHost | quote }}
+  cacheMaxBytes: {{ int64 .Values.proxy.cacheMaxBytes | quote }}
+  adminEnabled: {{ .Values.admin.enabled | quote }}
+  oidcEnabled: {{ .Values.oidc.enabled | quote }}

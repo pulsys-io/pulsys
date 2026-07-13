@@ -1,0 +1,42 @@
+# Enforce Developer Certificate of Origin (DCO) sign-off on every commit in a PR.
+# Contributors sign off with `git commit -s`. See CONTRIBUTING.md.
+# NOTE: actions are SHA-pinned in the supply-chain hardening pass.
+
+name: dco
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    name: DCO sign-off
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: verify sign-off on PR commits
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          missing=0
+          while read -r sha; do
+            [ -z "$sha" ] && continue
+            author="$(git show -s --format='%an <%ae>' "$sha")"
+            if ! git show -s --format='%B' "$sha" \
+                 | grep -qiE "^Signed-off-by: .+ <.+@.+>"; then
+              echo "::error::commit $sha is missing a Signed-off-by trailer ($author)"
+              missing=1
+            fi
+          done < <(git rev-list "$BASE..$HEAD")
+          if [ "$missing" -ne 0 ]; then
+            echo "One or more commits are missing a DCO sign-off. Run 'git commit -s' (or 'git rebase --signoff')." >&2
+            exit 1
+          fi
+          echo "All commits are signed off."

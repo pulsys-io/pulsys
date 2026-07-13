@@ -1,0 +1,75 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { brandName, companyLegalName, legalEmail, repoHref } from '../site.config';
+---
+
+<Layout
+  title={`Privacy policy · ${brandName}`}
+  description={`Privacy policy for the ${brandName} project website.`}
+  current="privacy"
+>
+  <div class="wrap legal">
+    <p class="eyebrow">Privacy policy</p>
+    <h1>Privacy policy</h1>
+    <p class="lead muted">
+      This policy describes how <strong>{companyLegalName}</strong> handles information collected via the {brandName}
+      project website. Last updated: <time datetime="2026-06-12">June 12, 2026</time>.
+    </p>
+
+    <h2>1) Scope</h2>
+    <p>
+      {brandName} is free and open-source software released under the Apache-2.0 license. This policy applies only to this
+      informational website. The software itself runs entirely in your own infrastructure: it sends us no telemetry and
+      phones no home.
+    </p>
+
+    <h2>2) Information we process</h2>
+    <ul class="clean">
+      <li>
+        <strong>Operational website data:</strong> standard server logs needed for security, availability, and abuse
+        prevention.
+      </li>
+      <li>
+        <strong>Aggregate analytics data:</strong> if enabled, we use Plausible Analytics in cookieless mode to measure
+        page usage trends. No personal profiles are built.
+      </li>
+    </ul>
+    <p>
+      We do not run sales or contact forms here. Questions, bug reports, and feature requests are handled in the open on
+      <a href={repoHref} target="_blank" rel="noopener noreferrer">GitHub</a>, where your contributions are governed by
+      GitHub's own privacy practices.
+    </p>
+
+    <h2>3) Analytics (Plausible scaffold)</h2>
+    <p>
+      When configured, this site loads Plausible Analytics with a domain-scoped script. Plausible is designed to work
+      without cookies and without storing raw IP addresses.
+    </p>
+    <p>
+      Analytics are disabled entirely when <code>PUBLIC_PLAUSIBLE_DOMAIN</code> is left unset in the build configuration.
+    </p>
+
+    <h2>4) How we use data</h2>
+    <ul class="clean">
+      <li>Keep the website secure and available.</li>
+      <li>Improve website clarity and information architecture using aggregate page metrics.</li>
+    </ul>
+
+    <h2>5) Data retention</h2>
+    <p>
+      Server logs are retained only as long as needed for security and operational purposes. Aggregate analytics contain
+      no personal identifiers.
+    </p>
+
+    <h2>6) Your choices and rights</h2>
+    <p>
+      Depending on your jurisdiction, you may request access, correction, or deletion of any personal data associated
+      with you. Because we collect no contact records here, in most cases there is nothing for us to hold.
+    </p>
+
+    <h2>7) Contact</h2>
+    <p>
+      For privacy questions, email <a href={`mailto:${legalEmail}`}>{legalEmail}</a>.
+    </p>
+  </div>
+</Layout>

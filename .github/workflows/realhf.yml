@@ -1,0 +1,50 @@
+# realhf: nightly CI that hits huggingface.co directly.
+#
+# This is the truth-loop for HF-wire compatibility: the read tests
+# fetch known fixtures from huggingface.co (direct and through a
+# local Pulsys proxy) and assert byte-for-byte equality. They use only
+# public repos, so no credentials are configured in CI.
+#
+# Write tests (which create throwaway repos on a real HF account and so
+# need an HF_TOKEN) are intentionally NOT run in CI to keep secrets out
+# of the pipeline. Run them locally instead:
+#
+#   HF_INTEGRATION_REAL=1 HF_INTEGRATION_REAL_WRITE=1 HF_TOKEN=hf_... \
+#     go test -tags realhf -run 'TestRealHF_PrivateRepoRoundtrip' ./internal/realhf/...
+
+name: realhf
+
+on:
+  schedule:
+    # Daily at 11:23 UTC. Off-peak for HF in both US and EU.
+    - cron: '23 11 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: realhf
+  cancel-in-progress: false
+
+jobs:
+  read-suite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: setup go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: run read tests against huggingface.co
+        env:
+          HF_INTEGRATION_REAL: '1'
+        run: |
+          go test -tags realhf -count=1 -timeout 5m \
+            -run 'TestRealHF_(DirectDownloadPublicFile|ProxyDownloadPublicFile|ParallelRangeRoundtrip)' \
+            ./internal/realhf/...

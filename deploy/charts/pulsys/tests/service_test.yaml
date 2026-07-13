@@ -1,0 +1,72 @@
+suite: service, pvc, ingress
+templates:
+  - templates/service.yaml
+  - templates/pvc.yaml
+  - templates/ingress.yaml
+tests:
+  - it: exposes data-plane and admin ports
+    template: templates/service.yaml
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - contains:
+          path: spec.ports
+          content:
+            name: http
+            port: 8080
+            targetPort: http
+            protocol: TCP
+      - contains:
+          path: spec.ports
+          content:
+            name: admin
+            port: 6060
+            targetPort: admin
+            protocol: TCP
+
+  - it: creates a cache PVC by default
+    template: templates/pvc.yaml
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      persistence.size: 100Gi
+    asserts:
+      - isKind:
+          of: PersistentVolumeClaim
+      - equal:
+          path: spec.resources.requests.storage
+          value: 100Gi
+
+  - it: does not create a PVC when using an existing claim
+    template: templates/pvc.yaml
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      persistence.existingClaim: my-claim
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders an Ingress only when enabled
+    template: templates/ingress.yaml
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      ingress.enabled: true
+      ingress.className: nginx
+      ingress.hosts:
+        - host: hf.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+    asserts:
+      - isKind:
+          of: Ingress
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+      - equal:
+          path: spec.rules[0].host
+          value: hf.example.com

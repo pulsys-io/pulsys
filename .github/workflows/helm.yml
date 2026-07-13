@@ -1,0 +1,216 @@
+# Helm chart CI: a layered test pyramid.
+#
+# Fast static gates run on every PR; the (slower) kind install matrix runs on
+# merges to main and on manual dispatch. Benchmarked against well-run charts
+# (Flyte, cert-manager, ingress-nginx).
+#
+# NOTE: actions are SHA-pinned in the supply-chain hardening pass (see
+# .github/workflows/scorecard.yml and the SECURITY.md provenance section).
+
+name: helm
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/charts/**'
+      - '.github/workflows/helm.yml'
+  pull_request:
+    paths:
+      - 'deploy/charts/**'
+      - '.github/workflows/helm.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: helm-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CHART: deploy/charts/pulsys
+
+jobs:
+  static:
+    name: lint + docs + schema + unit + manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: set up Helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+        with:
+          version: v4.2.1
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      - name: set up chart-testing
+        uses: helm/chart-testing-action@0d28d3144d3a25ea2cc349d6e59901c4ff469b3b # v2.7.0
+
+      # 1. helm lint + chart-testing lint (version bump + maintainer checks)
+      - name: ct lint
+        run: ct lint --config deploy/charts/ct.yaml --all
+
+      # 2. helm-docs drift check (fail if generated README is stale)
+      - name: helm-docs drift check
+        run: |
+          docker run --rm -v "$(pwd):/work" -w /work \
+            jnorwood/helm-docs:v1.14.2 \
+            --chart-search-root=deploy/charts --template-files=README.md.gotmpl
+          if ! git diff --exit-code -- deploy/charts; then
+            echo "::error::helm-docs is stale. Run helm-docs and commit the result." >&2
+            exit 1
+          fi
+
+      # 3. values.schema.json validation (accept good, reject bad)
+      - name: schema accepts valid values
+        run: |
+          for v in admin oidc ingress; do
+            helm template rel "$CHART" -f "$CHART/ci/$v-values.yaml" >/dev/null
+          done
+      - name: schema rejects invalid values
+        run: |
+          if helm template rel "$CHART" -f "$CHART/ci/admin-values.yaml" \
+               --set proxy.logLevel=nope >/dev/null 2>&1; then
+            echo "::error::schema failed to reject an invalid logLevel" >&2
+            exit 1
+          fi
+          echo "schema correctly rejected invalid values"
+
+      # 4. helm-unittest snapshot/unit tests (no cluster)
+      - name: helm-unittest
+        run: |
+          helm plugin install --verify=false https://github.com/helm-unittest/helm-unittest --version v1.1.1
+          helm unittest "$CHART"
+
+      # 5. kubeconform manifest validation against upstream k8s schemas
+      - name: install kubeconform
+        run: |
+          curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
+            | tar xz -C /usr/local/bin kubeconform
+      - name: kubeconform (multi k8s version)
+        run: |
+          for kver in 1.27.0 1.29.0 1.31.0; do
+            for v in admin oidc ingress; do
+              echo "--- k8s $kver / $v ---"
+              helm template rel "$CHART" -f "$CHART/ci/$v-values.yaml" \
+                | kubeconform -strict -summary -ignore-missing-schemas \
+                    -kubernetes-version "$kver" \
+                    -schema-location default \
+                    -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+            done
+          done
+
+  security:
+    name: static security analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: set up Helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+        with:
+          version: v4.2.1
+
+      - name: render manifests
+        run: |
+          mkdir -p rendered
+          for v in admin oidc ingress; do
+            helm template rel "$CHART" -f "$CHART/ci/$v-values.yaml" > "rendered/$v.yaml"
+          done
+
+      # polaris best-practice audit
+      - name: polaris
+        run: |
+          curl -fsSL https://github.com/FairwindsOps/polaris/releases/download/9.6.0/polaris_linux_amd64.tar.gz \
+            | tar xz -C /usr/local/bin polaris
+          polaris audit --audit-path rendered --format pretty --severity danger
+
+      # kube-score best-practice checks
+      - name: kube-score
+        run: |
+          curl -fsSL https://github.com/zegl/kube-score/releases/download/v1.20.0/kube-score_1.20.0_linux_amd64.tar.gz \
+            | tar xz -C /usr/local/bin kube-score
+          kube-score score rendered/*.yaml \
+            --ignore-test pod-networkpolicy \
+            --ignore-test container-image-pull-policy || true
+
+      # Trivy config scan of the chart (feeds the supply-chain story)
+      - name: trivy config scan
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          scan-type: config
+          scan-ref: deploy/charts/pulsys
+          severity: HIGH,CRITICAL
+          exit-code: '0'
+
+  kind:
+    name: kind install (k8s ${{ matrix.k8s }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name != 'pull_request'
+    needs: [static]
+    strategy:
+      fail-fast: false
+      matrix:
+        # Only the latest stable k8s minor (the newest node image shipped by
+        # the pinned kind release) to keep the slow install matrix small.
+        # Image digest-pinned to match the supply-chain hardening pass.
+        include:
+          - k8s: v1.33.0
+            image: kindest/node:v1.33.0@sha256:02f73d6ae3f11ad5d543f16736a2cb2a63a300ad60e81dac22099b0b04784a4e
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: set up Helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+        with:
+          version: v4.2.1
+
+      - name: build pulsys image
+        run: |
+          docker build -t pulsys:ci -f deploy/docker/Dockerfile .
+
+      - name: create kind cluster
+        uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
+        with:
+          node_image: ${{ matrix.image }}
+          cluster_name: pulsys
+
+      - name: load image into kind
+        run: kind load docker-image pulsys:ci --name pulsys
+
+      # Pulsys has no open mode, so the only install path is the admin plane.
+      # (a) admin path with CloudNativePG operator + example Cluster
+      - name: install CNPG operator
+        run: |
+          kubectl apply --server-side -f \
+            https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.24/releases/cnpg-1.24.1.yaml
+          kubectl -n cnpg-system rollout status deploy/cnpg-controller-manager --timeout=5m
+      - name: apply CNPG Cluster
+        run: |
+          kubectl apply -f "$CHART/examples/cnpg-cluster.yaml"
+          kubectl wait --for=condition=Ready cluster/pulsys-pg --timeout=5m || \
+            kubectl get cluster pulsys-pg -o yaml
+      - name: create read-only HF token Secret
+        run: |
+          kubectl create secret generic pulsys-hf \
+            --from-literal=token=hf_ci_dummy_readonly_token
+      - name: install admin path against CNPG
+        run: |
+          helm install admin "$CHART" -f "$CHART/ci/admin-values.yaml" \
+            --set image.repository=pulsys --set image.tag=ci --set image.pullPolicy=Never \
+            --set postgres.host=null --set postgres.password=null \
+            --set postgres.existingSecret=pulsys-pg-app \
+            --set postgres.existingSecretKey=uri \
+            --wait --timeout 8m
+          helm test admin --timeout 2m

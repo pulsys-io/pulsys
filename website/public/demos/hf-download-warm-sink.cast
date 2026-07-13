@@ -1,0 +1,6 @@
+{"version": 2, "width": 98, "height": 12, "timestamp": 1715900000, "env": {"TERM": "xterm-256color", "SHELL": "/bin/bash", "PWD": "~"}}
+[0.0, "o", "$ HF_ENDPOINT=http://127.0.0.1:18080 \\\r\n"]
+[0.28, "o", "  hf-download Qwen/Qwen2.5-7B-Instruct \\\r\n"]
+[0.52, "o", "    --sink /dev/null --max-workers 96\r\n"]
+[0.95, "o", "hf-download: repo=Qwen/Qwen2.5-7B-Instruct type=model endpoint=http://127.0.0.1:18080 workers=96 revision=main\r\n\r\n"]
+[2.15, "o", "done: 15247134720 bytes in 0.770s (18781 MiB/s, 19.80 GB/s)\r\n"]

@@ -1,0 +1,13 @@
+server,payload,scenario,concurrency,round,reqs_per_s,bytes_per_s,p50,p90,p99,p99_9,total_reqs,total_bytes,timeouts,duration_s
+pulsys-saturate-iouring,4k,warm,192,1,1402757.30,5.54GB,90.00us,475.00us,1.29ms,0us,42222574,0B,0,30.10
+pulsys-saturate-iouring,4k,warm,192,2,1405943.98,5.56GB,94.00us,485.00us,1.45ms,0us,42319126,0B,0,30.10
+pulsys-saturate-iouring,4k,warm,192,3,1415368.60,5.59GB,91.00us,492.00us,1.39ms,0us,42602490,0B,0,30.10
+pulsys-saturate-iouring,256k,warm,192,1,249290.52,60.90GB,651.00us,1.57ms,4.23ms,0us,7503009,0B,0,30.10
+pulsys-saturate-iouring,256k,warm,192,2,285774.81,69.81GB,543.00us,1.39ms,4.07ms,0us,8601142,0B,0,30.10
+pulsys-saturate-iouring,256k,warm,192,3,291458.43,71.20GB,518.00us,1.34ms,3.54ms,0us,8771897,0B,0,30.10
+pulsys-saturate-iouring,4m,warm,192,1,24876.28,97.18GB,6.17ms,13.14ms,23.06ms,0us,748703,0B,0,30.10
+pulsys-saturate-iouring,4m,warm,192,2,23207.31,90.66GB,6.88ms,14.55ms,23.93ms,0us,698504,0B,0,30.10
+pulsys-saturate-iouring,4m,warm,192,3,22646.37,88.47GB,7.20ms,14.51ms,24.63ms,0us,681669,0B,0,30.10
+pulsys-saturate-iouring,16m,warm,192,1,5969.06,93.27GB,29.25ms,55.01ms,79.68ms,0us,179685,0B,0,30.10
+pulsys-saturate-iouring,16m,warm,192,2,6340.44,99.07GB,26.84ms,53.11ms,81.50ms,0us,190857,0B,0,30.10
+pulsys-saturate-iouring,16m,warm,192,3,5808.11,90.76GB,30.18ms,56.82ms,80.85ms,0us,174820,0B,0,30.10

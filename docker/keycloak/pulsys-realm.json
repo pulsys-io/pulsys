@@ -1,0 +1,71 @@
+{
+  "id": "pulsys",
+  "realm": "pulsys",
+  "displayName": "Pulsys (LOCAL DEV ONLY - insecure default credentials)",
+  "enabled": true,
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "groups": [
+    {
+      "name": "pulsys:owner",
+      "path": "/pulsys:owner"
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "pulsys-admin",
+      "name": "Pulsys Admin Console",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:3000/auth/oidc/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin@pulsys.local",
+      "email": "admin@pulsys.local",
+      "emailVerified": true,
+      "enabled": true,
+      "groups": [
+        "/pulsys:owner"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

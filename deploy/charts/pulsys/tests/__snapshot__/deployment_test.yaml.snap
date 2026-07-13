@@ -1,0 +1,195 @@
+matches the managed snapshot:
+  1: |
+    apiVersion: v1
+    data:
+      adminEnabled: "true"
+      cacheDir: /var/lib/pulsys/cache
+      cacheMaxBytes: "0"
+      defaultUpstreamHost: huggingface.co
+      logLevel: info
+      oidcEnabled: "false"
+      publicBaseURL: https://hf.example.com
+      upstreamScheme: https
+    kind: ConfigMap
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: pulsys
+        app.kubernetes.io/part-of: pulsys
+        app.kubernetes.io/version: 0.1.0
+        helm.sh/chart: pulsys-0.1.0
+      name: RELEASE-NAME-pulsys
+  2: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: pulsys
+        app.kubernetes.io/part-of: pulsys
+        app.kubernetes.io/version: 0.1.0
+        helm.sh/chart: pulsys-0.1.0
+      name: RELEASE-NAME-pulsys
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app.kubernetes.io/instance: RELEASE-NAME
+          app.kubernetes.io/name: pulsys
+      template:
+        metadata:
+          annotations:
+            checksum/config: f9f99254c8c0cb50313b46fcb370fd7a33f4c0f914d79f31c40a2e5a87746a91
+          labels:
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: pulsys
+            app.kubernetes.io/part-of: pulsys
+            app.kubernetes.io/version: 0.1.0
+            helm.sh/chart: pulsys-0.1.0
+        spec:
+          automountServiceAccountToken: false
+          containers:
+            - args:
+                - -listen=:8080
+                - -admin-listen=0.0.0.0:6060
+                - -public-base-url=https://hf.example.com
+                - -cache-dir=/var/lib/pulsys/cache
+                - -log-level=info
+                - -upstream-scheme=https
+                - -default-upstream-host=huggingface.co
+              command:
+                - pulsys
+              env:
+                - name: PULSYS_DB_DSN
+                  valueFrom:
+                    secretKeyRef:
+                      key: dsn
+                      name: RELEASE-NAME-pulsys-db
+                - name: PULSYS_TENANT
+                  value: default
+                - name: PULSYS_IMPORT_WORKER
+                  value: "1"
+                - name: PULSYS_HF_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      key: token
+                      name: pulsys-hf
+              image: ghcr.io/pulsys-io/pulsys:0.1.0
+              imagePullPolicy: IfNotPresent
+              livenessProbe:
+                failureThreshold: 3
+                httpGet:
+                  path: /healthz
+                  port: http
+                initialDelaySeconds: 5
+                periodSeconds: 10
+                timeoutSeconds: 3
+              name: pulsys
+              ports:
+                - containerPort: 8080
+                  name: http
+                  protocol: TCP
+                - containerPort: 6060
+                  name: admin
+                  protocol: TCP
+              readinessProbe:
+                failureThreshold: 3
+                httpGet:
+                  path: /healthz
+                  port: http
+                initialDelaySeconds: 3
+                periodSeconds: 10
+                timeoutSeconds: 3
+              resources:
+                limits:
+                  memory: 1Gi
+                requests:
+                  cpu: 250m
+                  memory: 128Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - mountPath: /var/lib/pulsys/cache
+                  name: cache
+                - mountPath: /tmp
+                  name: tmp
+          initContainers:
+            - command:
+                - pulsys-db
+                - migrate
+                - up
+              env:
+                - name: PULSYS_DB_DSN
+                  valueFrom:
+                    secretKeyRef:
+                      key: dsn
+                      name: RELEASE-NAME-pulsys-db
+              image: ghcr.io/pulsys-io/pulsys:0.1.0
+              imagePullPolicy: IfNotPresent
+              name: migrate
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+            - command:
+                - pulsys-db
+                - tenant
+                - ensure
+                - --name=default
+                - --display-name=default
+              env:
+                - name: PULSYS_DB_DSN
+                  valueFrom:
+                    secretKeyRef:
+                      key: dsn
+                      name: RELEASE-NAME-pulsys-db
+              image: ghcr.io/pulsys-io/pulsys:0.1.0
+              imagePullPolicy: IfNotPresent
+              name: tenant
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+            - command:
+                - pulsys-db
+                - health
+              env:
+                - name: PULSYS_DB_DSN
+                  valueFrom:
+                    secretKeyRef:
+                      key: dsn
+                      name: RELEASE-NAME-pulsys-db
+              image: ghcr.io/pulsys-io/pulsys:0.1.0
+              imagePullPolicy: IfNotPresent
+              name: configure
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+          securityContext:
+            fsGroup: 65532
+            runAsGroup: 65532
+            runAsNonRoot: true
+            runAsUser: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          serviceAccountName: RELEASE-NAME-pulsys
+          volumes:
+            - name: cache
+              persistentVolumeClaim:
+                claimName: RELEASE-NAME-pulsys
+            - emptyDir: {}
+              name: tmp

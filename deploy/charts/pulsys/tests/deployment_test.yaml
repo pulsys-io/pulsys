@@ -1,0 +1,219 @@
+suite: deployment
+templates:
+  - templates/deployment.yaml
+  - templates/configmap.yaml
+tests:
+  - it: requires proxy.publicBaseURL
+    template: templates/deployment.yaml
+    asserts:
+      - failedTemplate:
+          errorMessage: "proxy.publicBaseURL is required: set it to the externally reachable URL of the proxy (e.g. https://hf.example.com)"
+
+  - it: refuses to render when the admin plane is disabled (no open mode)
+    template: templates/deployment.yaml
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      admin.enabled: false
+    asserts:
+      - failedTemplate:
+          errorMessage: "Pulsys has no open mode: admin.enabled must be true. The admin plane (Postgres) is required to issue and enforce the API keys every data-plane request needs."
+
+  - it: requires a read-only Hugging Face token Secret
+    template: templates/deployment.yaml
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      admin.enabled: true
+      postgres.host: pg
+    asserts:
+      - failedTemplate:
+          errorMessage: "admin.imports.hfTokenSecret is required: name an existing Secret (key 'token') holding Pulsys's read-only Hugging Face token. Pulsys uses it for all upstream reads and refuses to start without it."
+
+  - it: requires an external Postgres for the admin plane
+    template: templates/deployment.yaml
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      admin.enabled: true
+      admin.imports.hfTokenSecret: pulsys-hf
+    asserts:
+      - failedTemplate:
+          errorMessage: "admin.enabled=true requires an external Postgres: set one of postgres.dsn, postgres.existingSecret, or postgres.host"
+
+  - it: renders a single-replica managed Deployment
+    template: templates/deployment.yaml
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      admin.enabled: true
+      postgres.host: pg
+      admin.imports.hfTokenSecret: pulsys-hf
+    documentIndex: 0
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: spec.replicas
+          value: 1
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value: ["pulsys"]
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: -public-base-url=https://hf.example.com
+
+  - it: injects PULSYS_DB_DSN, import worker, and PULSYS_HF_TOKEN env
+    template: templates/deployment.yaml
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      admin.enabled: true
+      postgres.host: pg
+      admin.imports.hfTokenSecret: pulsys-hf
+    documentIndex: 0
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PULSYS_IMPORT_WORKER
+            value: "1"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PULSYS_DB_DSN
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-pulsys-db
+                key: dsn
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PULSYS_HF_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: pulsys-hf
+                key: token
+
+  - it: wires OIDC discovery base when oidc is enabled
+    template: templates/deployment.yaml
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      admin.enabled: true
+      postgres.host: pg
+      admin.imports.hfTokenSecret: pulsys-hf
+      oidc.enabled: true
+      oidc.issuer: https://idp.example.com/realms/pulsys
+      oidc.redirectURI: https://hf.example.com/auth/oidc/callback
+      oidc.clientSecret: x
+    documentIndex: 0
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: PULSYS_OIDC_DISCOVERY_BASE
+            value: https://idp.example.com/realms/pulsys
+
+  - it: runs as a hardened non-root container
+    template: templates/deployment.yaml
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      admin.enabled: true
+      postgres.host: pg
+      admin.imports.hfTokenSecret: pulsys-hf
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.runAsNonRoot
+          value: true
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+      - contains:
+          path: spec.template.spec.containers[0].securityContext.capabilities.drop
+          content: ALL
+
+  - it: appends extra args and respects cacheMaxBytes
+    template: templates/deployment.yaml
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      admin.enabled: true
+      postgres.host: pg
+      admin.imports.hfTokenSecret: pulsys-hf
+      proxy.cacheMaxBytes: 1073741824
+      proxy.extraArgs:
+        - -iouring
+        - -listeners=8
+    documentIndex: 0
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: -cache-max-bytes=1073741824
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: -iouring
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: -listeners=8
+
+  - it: runs migrate + tenant + health as init containers
+    template: templates/deployment.yaml
+    documentIndex: 0
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      admin.enabled: true
+      postgres.host: pg
+      admin.imports.hfTokenSecret: pulsys-hf
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].command
+          value: ["pulsys-db", "migrate", "up"]
+      - contains:
+          path: spec.template.spec.initContainers[1].command
+          content: ensure
+      - equal:
+          path: spec.template.spec.initContainers[2].command
+          value: ["pulsys-db", "health"]
+
+  - it: omits init containers when admin.init.enabled is false
+    template: templates/deployment.yaml
+    documentIndex: 0
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      admin.enabled: true
+      postgres.host: pg
+      admin.imports.hfTokenSecret: pulsys-hf
+      admin.init.enabled: false
+    asserts:
+      - notExists:
+          path: spec.template.spec.initContainers
+
+  - it: configures OIDC in an init container when oidc is enabled
+    template: templates/deployment.yaml
+    documentIndex: 0
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      admin.enabled: true
+      postgres.host: pg
+      admin.imports.hfTokenSecret: pulsys-hf
+      oidc.enabled: true
+      oidc.issuer: https://idp.example.com/realms/pulsys
+      oidc.redirectURI: https://hf.example.com/auth/oidc/callback
+      oidc.clientSecret: x
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[2].command
+          content: configure
+      - contains:
+          path: spec.template.spec.initContainers[2].command
+          content: --client-secret=$(OIDC_CLIENT_SECRET)
+
+  - it: matches the managed snapshot
+    templates:
+      - templates/deployment.yaml
+      - templates/configmap.yaml
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      admin.enabled: true
+      postgres.host: pg
+      admin.imports.hfTokenSecret: pulsys-hf
+    asserts:
+      - matchSnapshot: {}

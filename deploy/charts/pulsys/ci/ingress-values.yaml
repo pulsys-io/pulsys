@@ -1,0 +1,41 @@
+# ct / unittest scenario: data plane exposed through an Ingress.
+proxy:
+  publicBaseURL: https://hf.example.com
+admin:
+  enabled: true
+  tenant: default
+  imports:
+    hfTokenSecret: pulsys-hf
+postgres:
+  host: pulsys-pg-rw
+  port: 5432
+  user: pulsys
+  password: pulsys
+  database: pulsys
+  sslmode: require
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+  hosts:
+    - host: hf.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: pulsys-tls
+      hosts:
+        - hf.example.com
+metrics:
+  serviceMonitor:
+    enabled: true
+persistence:
+  enabled: true
+  size: 1Gi
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi

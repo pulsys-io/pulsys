@@ -1,0 +1,99 @@
+{
+  "//": "Hardened PRODUCTION realm for the Pulsys admin console. This is NOT the",
+  "//1": "frictionless dev realm (docker/keycloak/pulsys-realm.json) -- it ships no",
+  "//2": "users and no admin password. Replace every REPLACE_ME before importing.",
+  "//3": "See docs/oidc.md for the full hardening + import guide.",
+
+  "realm": "pulsys",
+  "enabled": true,
+
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": false,
+  "rememberMe": false,
+  "verifyEmail": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+
+  "accessTokenLifespan": 300,
+  "accessTokenLifespanForImplicitFlow": 0,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "offlineSessionIdleTimeout": 1209600,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "accessCodeLifespanLogin": 1800,
+  "actionTokenGeneratedByUserLifespan": 300,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+
+  "passwordPolicy": "length(12) and notUsername and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1) and passwordHistory(3) and forceExpiredPasswordChange(180)",
+
+  "browserSecurityHeaders": {
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+    "xFrameOptions": "SAMEORIGIN",
+    "strictTransportSecurity": "max-age=31536000; includeSubDomains",
+    "xContentTypeOptions": "nosniff",
+    "referrerPolicy": "no-referrer"
+  },
+
+  "groups": [
+    { "name": "pulsys:owner", "path": "/pulsys:owner" },
+    { "name": "pulsys:admin", "path": "/pulsys:admin" },
+    { "name": "pulsys:viewer", "path": "/pulsys:viewer" }
+  ],
+
+  "clients": [
+    {
+      "clientId": "pulsys-admin",
+      "name": "Pulsys Admin Console",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "REPLACE_ME_WITH_A_GENERATED_SECRET",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": false,
+      "redirectUris": [
+        "https://REPLACE_ME_PULSYS_HOST/auth/oidc/callback"
+      ],
+      "webOrigins": [
+        "https://REPLACE_ME_PULSYS_HOST"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "https://REPLACE_ME_PULSYS_HOST",
+        "backchannel.logout.session.required": "true",
+        "use.refresh.tokens": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ]
+}

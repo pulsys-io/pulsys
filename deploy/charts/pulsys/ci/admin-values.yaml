@@ -1,0 +1,30 @@
+# ct / kind scenario: admin plane with an external Postgres (CNPG-style).
+# The kind workflow installs the CNPG operator + a Cluster, then points
+# postgres.existingSecret at the generated app Secret.
+proxy:
+  publicBaseURL: http://pulsys.default.svc.cluster.local:8080
+admin:
+  enabled: true
+  tenant: default
+  imports:
+    hfTokenSecret: pulsys-hf
+postgres:
+  # In CI this is overridden to the CNPG app Secret; the inline default keeps
+  # `helm template`/unittest renders self-contained.
+  host: pulsys-pg-rw
+  port: 5432
+  user: pulsys
+  password: pulsys
+  database: pulsys
+  sslmode: require
+oidc:
+  enabled: false
+persistence:
+  enabled: true
+  size: 1Gi
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi

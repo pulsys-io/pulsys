@@ -1,0 +1,219 @@
+{{- include "pulsys.validate" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pulsys.fullname" . }}
+  labels:
+    {{- include "pulsys.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "pulsys.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "pulsys.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "pulsys.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if and .Values.admin.enabled .Values.admin.init.enabled }}
+      # Schema migration, tenant bootstrap, and (when enabled) OIDC config run
+      # as initContainers so a plain `helm install`/`upgrade` works without
+      # install hooks. `pulsys-db migrate up` takes a DB advisory lock, so it is
+      # safe when pod starts overlap (extras see "no change").
+      initContainers:
+        - name: migrate
+          image: {{ include "pulsys.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          command: ["pulsys-db", "migrate", "up"]
+          env:
+            - name: PULSYS_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pulsys.dbSecretName" . }}
+                  key: {{ include "pulsys.dbSecretKey" . }}
+        - name: tenant
+          image: {{ include "pulsys.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          command:
+            - pulsys-db
+            - tenant
+            - ensure
+            - --name={{ .Values.admin.tenant }}
+            - --display-name={{ .Values.admin.tenant }}
+          env:
+            - name: PULSYS_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pulsys.dbSecretName" . }}
+                  key: {{ include "pulsys.dbSecretKey" . }}
+        - name: configure
+          image: {{ include "pulsys.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- if .Values.oidc.enabled }}
+          command:
+            - pulsys-db
+            - oidc
+            - configure
+            - --tenant={{ .Values.admin.tenant }}
+            - --issuer={{ .Values.oidc.issuer }}
+            - --client-id={{ .Values.oidc.clientID }}
+            - --client-secret=$(OIDC_CLIENT_SECRET)
+            - --redirect-uri={{ .Values.oidc.redirectURI }}
+            - --owner-groups={{ .Values.oidc.ownerGroups }}
+          {{- else }}
+          command: ["pulsys-db", "health"]
+          {{- end }}
+          env:
+            - name: PULSYS_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pulsys.dbSecretName" . }}
+                  key: {{ include "pulsys.dbSecretKey" . }}
+            {{- if .Values.oidc.enabled }}
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pulsys.oidcSecretName" . }}
+                  key: client-secret
+            {{- end }}
+      {{- end }}
+      containers:
+        - name: pulsys
+          image: {{ include "pulsys.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          command: ["pulsys"]
+          args:
+            - -listen=:{{ .Values.service.port }}
+            - -admin-listen=0.0.0.0:{{ .Values.service.adminPort }}
+            - -public-base-url={{ required "proxy.publicBaseURL is required" .Values.proxy.publicBaseURL }}
+            - -cache-dir={{ .Values.proxy.cacheDir }}
+            - -log-level={{ .Values.proxy.logLevel }}
+            - -upstream-scheme={{ .Values.proxy.upstreamScheme }}
+            - -default-upstream-host={{ .Values.proxy.defaultUpstreamHost }}
+            {{- with .Values.proxy.allowHosts }}
+            - -allow-host={{ join "," . }}
+            {{- end }}
+            {{- if gt (int64 .Values.proxy.cacheMaxBytes) 0 }}
+            - -cache-max-bytes={{ int64 .Values.proxy.cacheMaxBytes }}
+            {{- end }}
+            {{- range .Values.proxy.extraArgs }}
+            - {{ . }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+            - name: admin
+              containerPort: {{ .Values.service.adminPort }}
+              protocol: TCP
+          env:
+            {{- if .Values.admin.enabled }}
+            - name: PULSYS_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pulsys.dbSecretName" . }}
+                  key: {{ include "pulsys.dbSecretKey" . }}
+            - name: PULSYS_TENANT
+              value: {{ .Values.admin.tenant | quote }}
+            - name: PULSYS_IMPORT_WORKER
+              value: {{ ternary "1" "0" .Values.admin.imports.worker | quote }}
+            {{- with .Values.admin.imports.maxWorkers }}
+            - name: PULSYS_IMPORT_MAX_WORKERS
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.admin.imports.jobTimeout }}
+            - name: PULSYS_IMPORT_JOB_TIMEOUT
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.admin.imports.hfTokenSecret }}
+            - name: PULSYS_HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ . }}
+                  key: token
+            {{- end }}
+            {{- if .Values.oidc.enabled }}
+            - name: PULSYS_OIDC_DISCOVERY_BASE
+              value: {{ .Values.oidc.discoveryBase | default .Values.oidc.issuer | quote }}
+            {{- end }}
+            {{- end }}
+            {{- with .Values.proxy.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          {{- end }}
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: cache
+              mountPath: {{ .Values.proxy.cacheDir }}
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: cache
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (include "pulsys.fullname" .) }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ printf "%s-test" (include "pulsys.fullname" .) }}
+  labels:
+    {{- include "pulsys.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: healthz
+      image: busybox:1.37
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      command:
+        - /bin/sh
+        - -ec
+        - |
+          host="{{ include "pulsys.fullname" . }}"
+          echo "==> proxy /healthz"
+          wget -q -O- "http://${host}:{{ .Values.service.port }}/healthz" | grep -q '"status":"ok"'
+          echo "==> admin /healthz"
+          wget -q -O- "http://${host}:{{ .Values.service.adminPort }}/healthz" | grep -q '"status":"ok"'
+          echo "ok"

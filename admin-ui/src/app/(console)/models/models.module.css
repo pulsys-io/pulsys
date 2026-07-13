@@ -1,0 +1,335 @@
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.statCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.statLabel {
+  font-size: 12px;
+  font-weight: 590;
+  color: var(--label-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.statValue {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.statMeta {
+  font-size: 13px;
+  color: var(--label-tertiary);
+}
+
+.overview {
+  display: grid;
+  grid-template-columns: 1fr minmax(240px, 360px);
+  gap: var(--space-5);
+  align-items: stretch;
+  margin-bottom: var(--space-6);
+}
+
+@media (max-width: 800px) {
+  .overview {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chartCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 100%;
+}
+
+.chartTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 590;
+  color: var(--label-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.chartBody {
+  display: grid;
+  grid-template-columns: 184px minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .chartBody {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+}
+
+.donutWrap {
+  position: relative;
+  width: 184px;
+  height: 184px;
+  flex-shrink: 0;
+}
+
+.donut {
+  display: block;
+}
+
+.donutCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  pointer-events: none;
+  text-align: center;
+}
+
+.donutTotalLabel {
+  font-size: 11px;
+  font-weight: 590;
+  color: var(--label-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.donutTotalValue {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.chartLegend {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto auto;
+  column-gap: var(--space-3);
+  row-gap: 6px;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--label-primary);
+  min-width: 0;
+}
+
+.legendItem {
+  display: contents;
+}
+
+.legendSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.legendLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legendSize {
+  color: var(--label-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.legendPct {
+  color: var(--label-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+  text-align: right;
+  min-width: 3.5em;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
+  margin-bottom: var(--space-4);
+}
+
+.toolbarField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 160px;
+}
+
+.toolbarLabel {
+  font-size: 12px;
+  font-weight: 590;
+  color: var(--label-secondary);
+}
+
+.select {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-md);
+  background: var(--fill-secondary);
+  font-size: 14px;
+  color: var(--label-primary);
+}
+
+.modelTable {
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-lg);
+  background: var(--fill-elevated);
+  overflow: hidden;
+}
+
+.modelHeader {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.6fr 1fr 100px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  font-weight: 590;
+  color: var(--label-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--separator);
+  background: var(--fill-secondary);
+}
+
+.modelRow {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.6fr 1fr 100px;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--space-4) var(--space-3) calc(var(--space-4) + 18px);
+  font-size: 14px;
+}
+
+/* Summary row omits the Actions column; Purge lives in Disclosure.actions. */
+.modelRowSummary {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.6fr 1fr;
+  gap: var(--space-3);
+  align-items: center;
+  flex: 1;
+  min-height: 48px;
+  padding: var(--space-3) var(--space-4) var(--space-3) calc(var(--space-4) + 18px);
+  font-size: 14px;
+}
+
+.modelName {
+  font-weight: 590;
+}
+
+.modelId {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--label-secondary);
+}
+
+.revisions {
+  font-size: 13px;
+  color: var(--label-secondary);
+}
+
+.revisionSummary {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.revisionCount {
+  font-size: 13px;
+  font-weight: 590;
+  color: var(--label-primary);
+}
+
+.revisionChips {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.revisionChip,
+.revisionMore {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--label-secondary);
+  background: var(--fill-secondary);
+  border: 1px solid var(--separator);
+}
+
+.revisionMore {
+  font-family: inherit;
+  font-weight: 590;
+}
+
+.sizeCell {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.sectionTitle {
+  margin: var(--space-6) 0 var(--space-3);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.modelDetails {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.detailBlock {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.detailTitle {
+  font-size: 12px;
+  font-weight: 590;
+  color: var(--label-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fullRevisionList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.fullRevision {
+  padding: 5px 8px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-sm);
+  background: var(--fill-secondary);
+  color: var(--label-secondary);
+  font-size: 12px;
+}
+
+.fileTableWrap {
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--fill-elevated);
+}

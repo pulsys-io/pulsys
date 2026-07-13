@@ -1,0 +1,68 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, var(--accent-muted), transparent),
+    var(--fill-primary);
+}
+
+.panel {
+  width: min(420px, 100%);
+  padding: var(--space-7) var(--space-6);
+  text-align: center;
+  animation: fade-in var(--duration-normal) var(--ease-out);
+}
+
+.mark {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto var(--space-5);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000));
+  box-shadow: var(--shadow-md);
+}
+
+.title {
+  margin: 0 0 var(--space-3);
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.lead {
+  margin: 0 0 var(--space-6);
+  color: var(--label-secondary);
+  font-size: 16px;
+  line-height: 1.5;
+  max-width: 36ch;
+  margin-inline: auto;
+}
+
+.error {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--critical) 12%, transparent);
+  color: var(--critical);
+  font-size: 14px;
+  text-align: left;
+}
+
+.cta {
+  width: 100%;
+}
+
+.footnote {
+  margin: var(--space-5) 0 0;
+  font-size: 13px;
+  color: var(--label-tertiary);
+  line-height: 1.45;
+}
+
+.footnoteEm {
+  color: var(--label-secondary);
+  font-weight: 500;
+}

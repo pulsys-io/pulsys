@@ -1,0 +1,26 @@
+{
+  "name": "pulsys-bench-cdk",
+  "version": "0.1.0",
+  "description": "CDK stack for the pulsys bench harness: EC2 + SSM (no SSH) + S3 results bucket + SSM documents (Profile, Sweep, Bench).",
+  "private": true,
+  "bin": {
+    "bench": "bin/bench.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "synth": "cdk synth",
+    "diff": "cdk diff",
+    "deploy": "cdk deploy",
+    "destroy": "cdk destroy"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.150.0",
+    "constructs": "^10.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,62 @@
+# Issue/PR triage automation: auto-label PRs by path and reap stale items.
+# NOTE: actions are SHA-pinned in the supply-chain hardening pass.
+
+name: triage
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  schedule:
+    - cron: '30 1 * * *'   # daily stale sweep
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: triage-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  label:
+    name: auto-label PRs by path
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/labeler@8558fd74291d67161a8a78ce36a881fa63b766a9 # v5
+        with:
+          configuration-path: .github/labeler.yml
+          sync-labels: true
+
+  stale:
+    name: stale sweep
+    if: github.event_name != 'pull_request_target'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/stale@5bef64f19d7facfb25b37b414482c7164d639639 # v9
+        with:
+          days-before-stale: 60
+          days-before-close: 14
+          stale-issue-label: stale
+          stale-pr-label: stale
+          exempt-issue-labels: 'priority/critical,priority/high,help wanted,good first issue,blocked'
+          exempt-pr-labels: 'blocked'
+          stale-issue-message: >
+            This issue has had no activity for 60 days and is now marked stale.
+            It will be closed in 14 days if there is no further activity. Comment
+            to keep it open.
+          stale-pr-message: >
+            This pull request has had no activity for 60 days and is now marked
+            stale. It will be closed in 14 days if there is no further activity.
+          close-issue-message: >
+            Closing this issue after a prolonged period of inactivity. Please
+            reopen if it is still relevant.
+          close-pr-message: >
+            Closing this pull request after a prolonged period of inactivity.
+            Please reopen when you are ready to continue.

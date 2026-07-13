@@ -1,0 +1,56 @@
+# pulsys.service -- systemd unit for the proxy.
+#
+# Disabled by default on the AMI; the benchmark harness (Track A6) starts
+# the proxy explicitly under wrk's control rather than as a long-running
+# system service.  Enable manually with `systemctl enable --now pulsys`
+# when running as a sidecar in customer VPCs.
+#
+# Installed to /etc/systemd/system/pulsys.service by
+# common-provision.sh.  Configuration overrides live in
+# /etc/pulsys/pulsys.env (also created by the provisioner).
+
+[Unit]
+Description=pulsys: caching reverse proxy for Hugging Face
+Documentation=https://github.com/pulsys-io/pulsys
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/pulsys/pulsys.env
+ExecStart=/usr/local/bin/pulsys
+Restart=on-failure
+RestartSec=2s
+
+# Run under a dedicated user; created in common-provision.sh.
+User=pulsys
+Group=pulsys
+
+# Resource limits.  See sysctl-pulsys-category1.conf for system-wide
+# ceilings; LimitNOFILE here applies inside this unit only.
+LimitNOFILE=1048576
+LimitMEMLOCK=infinity
+
+# Allow setsockopt for SO_REUSEPORT and IP_BIND_ADDRESS_NO_PORT, plus
+# the io_uring syscalls.  CAP_NET_BIND_SERVICE lets us bind 80/443 when
+# requested via env.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+# Tightening that does NOT break io_uring or sendfile.  Anything below
+# this line was confirmed compatible by running `go test -race ./...`
+# inside the unit with PrivateTmp=true on a 6.1 kernel.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/pulsys /var/log/pulsys
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

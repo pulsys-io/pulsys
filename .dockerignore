@@ -1,0 +1,57 @@
+# Pulsys / pulsys Docker build context — keep images fast and small.
+#
+# The compose Dockerfile only needs:
+#   go.mod, go.sum, cmd/, internal/          (Go binaries)
+#   admin-ui/package*.json, admin-ui/src/…   (static admin export)
+#   docker/                                   (nginx + init scripts + Keycloak import)
+#
+# Everything else stays out of `COPY . .` and shrinks context transfer
+# (tmp/ alone is multi-GB on dev machines).
+
+# --- VCS, CI, editor scratch ---
+.git
+.gitignore
+.github
+.cursor
+.DS_Store
+.idea
+.vscode
+
+# --- Unrelated repo areas (not compiled into Pulsys images) ---
+website
+infra
+docs
+scripts
+# Phase 4.5: re-include the security-tests entrypoint so
+# Dockerfile.security-tests can COPY it.  Everything else
+# under scripts/ stays excluded.
+!scripts/security-tests-entrypoint.sh
+compose.yaml
+Dockerfile.test
+LICENSE
+README.md
+
+# --- Bench / cache / local run artifacts ---
+tmp
+cache
+bin
+hfhub.test
+*.test
+*.prof
+*.pb.gz
+*.cover
+coverage.out
+
+# --- Node deps (never copied into Go images) ---
+node_modules
+
+# --- Admin UI: source only; deps and build output come from npm ci/build ---
+admin-ui/node_modules
+admin-ui/.next
+admin-ui/out
+admin-ui/.env*
+admin-ui/README.md
+
+# --- Archives and bulky downloads ---
+**/*.tar.gz
+**/*.zip

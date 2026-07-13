@@ -1,0 +1,10 @@
+# This directory holds ONLY generated EC2 benchmark output.
+# It is intentionally empty in source control. Populate it by running the
+# low-friction CDK + SSM harness (see docs/benchmarks.md):
+#
+#   scripts/build-stock-ami.sh
+#   (cd infra/cdk && npm install && npx cdk deploy -c instanceType=c7i.metal-24xl)
+#   scripts/ssm-bench.sh variant=saturate-iouring duration=30s
+#
+# The harness writes: report.md, rps.svg, throughput.svg, latency.svg,
+# and matrix-saturate-iouring.csv into this directory.

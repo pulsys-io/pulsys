@@ -1,0 +1,58 @@
+{
+  "name": "llhttp",
+  "version": "9.4.2",
+  "description": "HTTP parser in LLVM IR",
+  "main": "lib/llhttp.js",
+  "types": "lib/llhttp.d.ts",
+  "files": [
+    "lib",
+    "src"
+  ],
+  "scripts": {
+    "bench": "node --import tsx bench/native.ts",
+    "bench-wasm": "node --import tsx bench/wasm.ts",
+    "build": "node --import tsx bin/generate.ts",
+    "build-ts": "tsc",
+    "prebuild-wasm": "npm run wasm -- --prebuild && npm run wasm -- --setup",
+    "build-wasm": "npm run wasm -- --docker",
+    "wasm": "node --import tsx bin/build_wasm.ts",
+    "clean": "node --import tsx scripts/clean.ts",
+    "prepare": "npm run clean && npm run build-ts",
+    "test": "node --import tsx ./test/md-test.ts",
+    "lint": "eslint",
+    "lint-fix": "eslint --fix",
+    "postversion": "RELEASE=`node -e \"process.stdout.write(require('./package').version)\"` make -B postversion",
+    "github-release": "RELEASE_V=`node -e \"process.stdout.write('v' + require('./package').version)\"` make github-release"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/nodejs/llhttp.git"
+  },
+  "keywords": [
+    "http",
+    "llvm",
+    "ir",
+    "llparse"
+  ],
+  "author": "Fedor Indutny <fedor@indutny.com> (http://darksi.de/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/nodejs/llhttp/issues"
+  },
+  "homepage": "https://github.com/nodejs/llhttp#readme",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@stylistic/eslint-plugin": "^5.8.0",
+    "@types/node": "^25.3.0",
+    "eslint": "^10.0.3",
+    "llparse-dot": "^1.0.1",
+    "llparse-test-fixture": "^5.1.0",
+    "mdgator": "^1.1.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.55.0"
+  },
+  "dependencies": {
+    "llparse": "^7.3.1"
+  }
+}

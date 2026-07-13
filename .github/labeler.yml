@@ -1,0 +1,46 @@
+# PR auto-labeler config (actions/labeler v5). Labels are applied by path.
+"area/data-plane":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "internal/coreserver/**"
+          - "internal/cache/**"
+          - "internal/upstream/**"
+          - "internal/proxy/**"
+          - "internal/classify/**"
+"area/admin-plane":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "internal/admin/**"
+          - "internal/auth/**"
+          - "internal/registry/**"
+          - "admin-ui/**"
+"area/helm":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "deploy/charts/**"
+"area/aws":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "infra/cdk/**"
+          - "infra/packer/**"
+"area/ci":
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/workflows/**"
+          - ".goreleaser.yaml"
+          - ".golangci.yml"
+"area/website":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "website/**"
+"type/docs":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - "docs/**"
+"type/security":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "internal/security/**"
+          - "SECURITY.md"
+          - "docs/security.md"

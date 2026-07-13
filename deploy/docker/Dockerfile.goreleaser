@@ -1,0 +1,15 @@
+# Minimal runtime image assembled by GoReleaser from prebuilt binaries.
+# (For a from-source build, see deploy/docker/Dockerfile.)
+FROM gcr.io/distroless/static-debian12:nonroot
+
+LABEL org.opencontainers.image.title="pulsys" \
+      org.opencontainers.image.description="Disk-caching reverse proxy for Hugging Face downloads" \
+      org.opencontainers.image.licenses="Apache-2.0"
+
+# GoReleaser places the selected build artifacts at the context root.
+COPY pulsys /usr/local/bin/pulsys
+COPY pulsys-db /usr/local/bin/pulsys-db
+
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/pulsys"]

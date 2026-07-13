@@ -1,0 +1,88 @@
+# docker-compose.security-tests.yml -- Phase 4.5 OWASP WSTG
+# Linux + io_uring smoke harness.
+#
+# Brings up:
+#
+#   * postgres-sec    -- isolated Postgres 16 the test DSN
+#                        binds to.  POSTGRES_PASSWORD is local-
+#                        only, scoped to this compose project.
+#
+#   * security-tests  -- the test runner.  Waits for postgres
+#                        to be ready, runs the security suite
+#                        with -race and PULSYS_TEST_IOURING=1
+#                        so the Linux-only io_uring code path
+#                        is exercised by the same test matrix
+#                        we trust on Darwin.
+#
+# This compose stack is single-shot: `up --abort-on-container-
+# exit --exit-code-from security-tests` runs the suite once
+# and exits.  The wrapper script
+# scripts/security-tests-linux.sh prints the recommended
+# invocation and tears down the volume after each run.
+
+services:
+  postgres-sec:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: pulsys-sec-tests
+      POSTGRES_DB: pulsys_sec_admin
+    # Bind to loopback only so a host that already has
+    # postgres listening on 5432 doesn't clash AND so this
+    # compose project never accidentally exposes a write-
+    # ready Postgres to the host LAN.
+    ports:
+      - "127.0.0.1:54329:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pulsys_sec_admin"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+    tmpfs:
+      # Mount the data directory on tmpfs so destroy + recreate
+      # is sub-second.  Persistence is explicitly NOT wanted for
+      # an ephemeral test pool.
+      - /var/lib/postgresql/data:size=512m
+
+  security-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.security-tests
+    depends_on:
+      postgres-sec:
+        condition: service_healthy
+    environment:
+      # testpg honors this and uses CREATEDB to spin per-test
+      # databases off of a template.  See internal/testpg.
+      PULSYS_TEST_PG_DSN: postgres://postgres:pulsys-sec-tests@postgres-sec:5432/pulsys_sec_admin?sslmode=disable
+      # NOTE: we do NOT globally enable PULSYS_TEST_IOURING for
+      # the full security matrix.  Forcing the io_uring reactor
+      # on for handler-heavy tests creates a known interaction
+      # with test cleanup: detached fallback goroutines holding
+      # kept-alive conns can block t.Cleanup if a client abandons
+      # a conn.  The production fix (Server.runDetached read
+      # deadline) bounds the lifetime but doesn't eliminate the
+      # cleanup wait, and 2-minute waits on every test would
+      # bloat CI by orders of magnitude.
+      #
+      # Instead, the io_uring code paths are exercised by:
+      #   * iouring_smuggling_corpus_linux_test.go -- fans the
+      #     same smuggling corpus through parseRequestFromBuf
+      #     (the iouring-mode parser) that the Darwin tests
+      #     fan through readRequest.
+      #   * TestWarmHitIoUring (internal/coreserver) -- end-to-
+      #     end warm-hit path goes through the reactor + fused
+      #     write.
+      #
+      # The flag is left commented as a kill-switch for ad-hoc
+      # debugging.
+      # PULSYS_TEST_IOURING: "1"
+      # PULSYS_TEST_IOURING_REQUIRE: "1"
+      # Verbose Go test output goes to the docker compose log.
+      GO_TEST_VERBOSE: "1"
+    # io_uring SQE submission requires CAP_SYS_NICE on some
+    # kernel configurations.  Adding the cap explicitly avoids
+    # silent fallback on hosts whose docker has dropped it.
+    cap_add:
+      - SYS_NICE
+    # ipc/host kept default; io_uring shared rings are
+    # process-internal (mmap) so we don't need /dev/shm tricks.

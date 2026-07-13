@@ -1,0 +1,167 @@
+---
+import '../styles/global.css';
+import {
+  brandName,
+  companyLegalName,
+  contactHref,
+  docsHref,
+  repoHref,
+  repoSlug,
+  plausibleDomain,
+  plausibleScriptSrc,
+} from '../site.config';
+
+interface Props {
+  title: string;
+  description?: string;
+  current?: 'home' | 'blog' | 'privacy';
+  /** Marketing home: force dark palette (Linear / Vercel / Stripe pattern). */
+  marketing?: boolean;
+}
+
+const {
+  title,
+  description = 'Fast, reliable model and dataset downloads, cached for your team.',
+  current,
+  marketing = false,
+} = Astro.props;
+const year = new Date().getFullYear();
+const base = import.meta.env.BASE_URL;
+const ogImage = Astro.site ? new URL(`${base}og.png`, Astro.site).href : `${base}og.png`;
+---
+
+<!doctype html>
+<html lang="en" class:list={[{ 'theme-dark': marketing }]}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#050507" />
+    <title>{title}</title>
+    <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+    <link rel="apple-touch-icon" href={`${base}apple-touch-icon.png`} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    {
+      marketing && (
+        <>
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+          <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap"
+            rel="stylesheet"
+          />
+        </>
+      )
+    }
+    {
+      plausibleDomain && (
+        <script
+          defer
+          data-domain={plausibleDomain}
+          src={plausibleScriptSrc}
+        />
+      )
+    }
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class:list={['header', { 'header--marketing': marketing }]}>
+      <nav class="nav-inner" aria-label="Primary">
+        <a class:list={['brand', { 'brand-mark': marketing }]} href="/" aria-label={`${brandName} home`}>
+          <svg
+            class="brand__logo"
+            viewBox="0 0 32 32"
+            width="22"
+            height="22"
+            aria-hidden="true"
+          >
+            <path
+              d="M3 16 H10 L13.5 7 L18.5 25 L22 16 H29"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          {brandName}
+        </a>
+        {
+          marketing ? (
+            <div class="nav-actions">
+              <a class="nav-text" href={docsHref}>Docs</a>
+              <a class="nav-text" href="/blog" aria-current={current === 'blog' ? 'page' : undefined}>
+                Blog
+              </a>
+              <a
+                class="btn btn--secondary btn--nav gh-stars"
+                href={repoHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-gh-stars={repoSlug}
+                aria-label="Star pulsys on GitHub"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>
+                <span>Star</span>
+                <span class="gh-stars__count" hidden></span>
+              </a>
+            </div>
+          ) : (
+            <ul class="nav-links">
+              <li>
+                <a href="/" aria-current={current === 'home' ? 'page' : undefined}>
+                  Overview
+                </a>
+              </li>
+              <li>
+                <a href="/blog" aria-current={current === 'blog' ? 'page' : undefined}>
+                  Blog
+                </a>
+              </li>
+            </ul>
+          )
+        }
+      </nav>
+    </header>
+    <main id="main" class:list={[{ 'main--marketing': marketing }]}>
+      <slot />
+    </main>
+    <footer class="footer">
+      <div class="footer-inner">
+        <p>
+          © {year} {companyLegalName} · Apache-2.0 ·
+          <a href={repoHref} target="_blank" rel="noopener noreferrer">GitHub</a> ·
+          <a href={docsHref}>Docs</a> ·
+          <a href={contactHref} target="_blank" rel="noopener noreferrer">Discussions</a> ·
+          <a href="/privacy">Privacy</a>
+        </p>
+      </div>
+    </footer>
+    <script is:inline>
+      // Live GitHub-stars button: fill the count from the public API, with a
+      // silent fallback to just "Star" if the request is rate-limited/offline.
+      (function () {
+        var el = document.querySelector('[data-gh-stars]');
+        if (!el) return;
+        var slug = el.getAttribute('data-gh-stars');
+        fetch('https://api.github.com/repos/' + slug, { headers: { Accept: 'application/vnd.github+json' } })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) {
+            if (!d || typeof d.stargazers_count !== 'number') return;
+            var n = d.stargazers_count;
+            var label = n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n);
+            var c = el.querySelector('.gh-stars__count');
+            if (c) { c.textContent = label; c.hidden = false; }
+          })
+          .catch(function () {});
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,86 @@
+---
+import { brandName, marketing } from '../site.config';
+
+const { integrationName } = marketing;
+/** AWS-official group containers + service icons (dark mode). */
+---
+
+<figure class="lp-arch-diag" aria-labelledby="arch-diag-caption">
+  <div
+    class="lp-arch-diag__stage"
+    role="img"
+    aria-label={`Customer VPC with EC2 running ${brandName} and an EBS cache volume; on a miss the proxy fetches from ${integrationName}`}
+  >
+    <div class="aws-group aws-group--vpc">
+      <header class="aws-group__head">
+        <img src="/aws-icons/vpc-group.svg" alt="" width="22" height="22" class="aws-group__icon" />
+        <span class="aws-group__label">VPC</span>
+        <span class="aws-group__sub">Customer</span>
+      </header>
+
+      <div class="aws-group aws-group--subnet">
+        <header class="aws-group__head">
+          <img src="/aws-icons/private-subnet-group.svg" alt="" width="22" height="22" class="aws-group__icon" />
+          <span class="aws-group__label">Private subnet</span>
+        </header>
+
+        <div class="aws-row">
+          <figure class="aws-svc">
+            <img src="/aws-icons/elastic-load-balancing.svg" alt="" width="56" height="56" class="aws-svc__icon" />
+            <figcaption class="aws-svc__cap">
+              <span class="aws-svc__name">ALB</span>
+              <span class="aws-svc__sub">TLS</span>
+            </figcaption>
+          </figure>
+
+          <span class="aws-link" aria-hidden="true">
+            <svg viewBox="0 0 40 8" width="40" height="8">
+              <line x1="0" y1="4" x2="32" y2="4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+              <path d="M32 1.5 L37 4 L32 6.5 Z" fill="currentColor" />
+            </svg>
+          </span>
+
+          <figure class="aws-svc">
+            <img src="/aws-icons/amazon-ec2.svg" alt="" width="56" height="56" class="aws-svc__icon" />
+            <figcaption class="aws-svc__cap">
+              <span class="aws-svc__name">Amazon EC2</span>
+              <span class="aws-svc__sub brand-mark">{brandName}</span>
+            </figcaption>
+          </figure>
+
+          <span class="aws-link" aria-hidden="true">
+            <svg viewBox="0 0 40 8" width="40" height="8">
+              <line x1="0" y1="4" x2="32" y2="4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+              <path d="M32 1.5 L37 4 L32 6.5 Z" fill="currentColor" />
+            </svg>
+          </span>
+
+          <figure class="aws-svc">
+            <img src="/aws-icons/amazon-ebs.svg" alt="" width="56" height="56" class="aws-svc__icon" />
+            <figcaption class="aws-svc__cap">
+              <span class="aws-svc__name">EBS</span>
+              <span class="aws-svc__sub">cache</span>
+            </figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+
+    <div class="aws-miss" aria-hidden="true">
+      <svg viewBox="0 0 80 24" width="80" height="24" class="aws-miss__line">
+        <line x1="2" y1="12" x2="68" y2="12" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5 4" stroke-linecap="round" />
+        <path d="M68 7.5 L75 12 L68 16.5 Z" fill="currentColor" />
+      </svg>
+      <span class="aws-miss__label">miss</span>
+    </div>
+
+    <aside class="aws-external" aria-label={integrationName}>
+      <span class="aws-external__name">{integrationName}</span>
+      <span class="aws-external__sub">HTTPS · server HF token</span>
+    </aside>
+  </div>
+
+  <figcaption id="arch-diag-caption" class="lp-arch-diag__figcaption">
+    First pull: from {integrationName}. Every pull after: from disk.
+  </figcaption>
+</figure>

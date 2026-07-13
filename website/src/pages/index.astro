@@ -1,0 +1,506 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ArchDiagram from '../components/ArchDiagram.astro';
+import { repoHref, docsHref, getStartedHref, brandName, marketing } from '../site.config';
+import { headline } from '../generated/headline';
+import 'asciinema-player/dist/bundle/asciinema-player.css';
+
+const { cliBinName, demoModelId, integrationName } = marketing;
+const base = import.meta.env.BASE_URL;
+const rpsLabel =
+  headline.peakRpsMillions >= 1
+    ? `${headline.peakRpsMillions.toFixed(2).replace(/\.?0+$/, '')}M`
+    : `${Math.round(headline.peakRps / 1000)}k`;
+const gbLabel = `${Math.round(headline.peakGbPerS)} GB/s`;
+---
+
+<Layout
+  title={`${brandName} · Hugging Face pull-through cache`}
+  description={marketing.pageDescription}
+  current="home"
+  marketing
+>
+  <div class="lp">
+    <section class="lp-hero">
+      <div class="lp-hero__grid">
+        <div class="lp-hero__copy">
+          <p class="lp-badge">{marketing.categoryBadge}</p>
+          <h1 class="lp-title">{marketing.heroTitle}</h1>
+          <p class="lp-lead">{marketing.heroLead}</p>
+          <div class="lp-cta-row">
+            <a class="btn btn--primary btn--lg lp-cta" href={getStartedHref}>Get started</a>
+            <a
+              class="btn btn--secondary btn--lg lp-cta"
+              href={repoHref}
+              target="_blank"
+              rel="noopener noreferrer">View on GitHub</a>
+          </div>
+        </div>
+
+        <div class="lp-hero__visual" aria-label="Terminal demonstration">
+          <div class="lp-terminal">
+            <div class="lp-terminal__chrome">
+              <span class="lp-terminal__dot"></span>
+              <span class="lp-terminal__dot"></span>
+              <span class="lp-terminal__dot"></span>
+            </div>
+            <div id="asciinema-hf-demo" class="asciinema-hero lp-terminal__body"></div>
+            <pre
+              class="asciinema-static-fallback lp-terminal__fallback"
+              tabindex="0"
+              aria-label="Static terminal transcript"><code>$ export HF_ENDPOINT=http://localhost:8082
+$ export HF_TOKEN=pulsys_...
+$ {cliBinName} download {demoModelId}
+Resolving data files...
+Download complete</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lp-trust" aria-label="Project trust signals">
+      <ul class="lp-trust__row">
+        <li class="lp-trust__pill">Apache-2.0</li>
+        <li class="lp-trust__pill">Docker Compose local stack</li>
+        <li class="lp-trust__pill">Admin UI + API keys</li>
+        <li class="lp-trust__pill">Parser fuzzing in CI</li>
+        <li class="lp-trust__pill">Self-hosted · no telemetry</li>
+      </ul>
+    </section>
+
+    <section class="lp-proof" aria-labelledby="lp-proof-title">
+      <h2 id="lp-proof-title" class="sr-only">Benchmark results</h2>
+
+      <ul class="lp-stats">
+        <li class="lp-stat">
+          <span class="lp-stat__value tabular">{rpsLabel}</span>
+          <span class="lp-stat__label">req/s @ 4 KiB (loopback)</span>
+        </li>
+        <li class="lp-stat">
+          <span class="lp-stat__value tabular">{gbLabel}</span>
+          <span class="lp-stat__label">throughput @ 16 MiB</span>
+        </li>
+        <li class="lp-stat">
+          <span class="lp-stat__value tabular tabular-sm">{headline.instanceType}</span>
+          <span class="lp-stat__label">{headline.vcpu} vCPU · {headline.variant}</span>
+        </li>
+        <li class="lp-stat">
+          <span class="lp-stat__value tabular tabular-sm">io_uring</span>
+          <span class="lp-stat__label">Linux warm path</span>
+        </li>
+      </ul>
+
+      <div class="lp-charts">
+        <figure class="lp-chart">
+          <img src={`${base}results/ec2/rps.svg`} alt="Request rate by payload (EC2 reference run)" loading="lazy" />
+          <figcaption>EC2 saturation · req/s by payload</figcaption>
+        </figure>
+        <figure class="lp-chart">
+          <img src={`${base}results/ec2/throughput.svg`} alt="Throughput by payload (EC2 reference run)" loading="lazy" />
+          <figcaption>EC2 saturation · GB/s by payload</figcaption>
+        </figure>
+        <figure class="lp-chart lp-chart--wide">
+          <img src={`${base}results/darwin/e2e.svg`} alt="End-to-end hf download wallclock comparison" loading="lazy" />
+          <figcaption>End-to-end <code>hf download</code> wallclock (Darwin harness)</figcaption>
+        </figure>
+      </div>
+
+      <p class="lp-footnote">
+        Reference run: {headline.instanceType}, {headline.vcpu} vCPU, kernel {headline.kernel}, variant
+        <code>{headline.variant}</code>. Generated {headline.generatedUtc}. Reproduce via the
+        <a href={`${docsHref}/benchmarks/`}>benchmarks doc</a>.
+      </p>
+    </section>
+
+    <section class="lp-features" aria-labelledby="lp-features-title">
+      <h2 id="lp-features-title" class="lp-section-title lp-section-title--center">
+        Built for the hot path
+      </h2>
+      <p class="lp-section-lead">
+        Every repeated download is time your fleet spends waiting. Pulsys serves warm hits from
+        local disk at the speed the kernel allows — and treats the proxy in front of your
+        credentials as security-critical software.
+      </p>
+      <ul class="lp-feature-grid" role="list">
+        <li class="lp-feature">
+          <h3 class="lp-feature__title">Zero-copy warm path</h3>
+          <p class="lp-feature__body">
+            Warm hits bypass userspace: io_uring on Linux 6.1+, <code>sendfile</code> on macOS.
+            Published benchmarks with full reproduction steps — receipts, not claims.
+          </p>
+        </li>
+        <li class="lp-feature">
+          <h3 class="lp-feature__title">Authenticated by default</h3>
+          <p class="lp-feature__body">
+            No open mode. Every request needs a <code>pulsys_*</code> API key issued from the
+            admin console; client credentials never reach Hugging Face.
+          </p>
+        </li>
+        <li class="lp-feature">
+          <h3 class="lp-feature__title">Hardened HTTP server</h3>
+          <p class="lp-feature__body">
+            The custom HTTP/1.1 parser is differential-tested against Go's standard library,
+            fuzzed, and run against public request-smuggling corpora on every commit.
+          </p>
+        </li>
+        <li class="lp-feature">
+          <h3 class="lp-feature__title">Cache pre-warm imports</h3>
+          <p class="lp-feature__body">
+            Queue a Hugging Face repo from the console and a durable background job fills the
+            cache before your fleet asks for it — with live progress that survives restarts.
+          </p>
+        </li>
+        <li class="lp-feature">
+          <h3 class="lp-feature__title">Air-gap ready</h3>
+          <p class="lp-feature__body">
+            Strict-offline mode serves cached artifacts with zero upstream egress. Pre-warm via
+            imports, then cut the cord.
+          </p>
+        </li>
+        <li class="lp-feature">
+          <h3 class="lp-feature__title">Supply-chain rigor</h3>
+          <p class="lp-feature__body">
+            SLSA 3 releases, cosign-signed multi-arch images, SPDX SBOMs, and an OpenSSF
+            Scorecard — the provenance story enterprises ask about.
+          </p>
+        </li>
+      </ul>
+    </section>
+
+    <section class="lp-usecases" aria-labelledby="lp-usecases-title">
+      <h2 id="lp-usecases-title" class="lp-section-title lp-section-title--center">
+        Where the time goes
+      </h2>
+      <ul class="lp-usecase-grid" role="list">
+        <li class="lp-usecase">
+          <h3 class="lp-usecase__title">CI fleets</h3>
+          <p class="lp-usecase__body">
+            Every job pulls the same model over the internet. Point <code>HF_ENDPOINT</code> at
+            Pulsys and the second pull — and every one after — comes off local disk.
+          </p>
+        </li>
+        <li class="lp-usecase">
+          <h3 class="lp-usecase__title">Training clusters</h3>
+          <p class="lp-usecase__body">
+            Idle accelerators are the most expensive way to wait on a download. Warm hits stream
+            at local wire speed, so nodes start working instead of downloading.
+          </p>
+        </li>
+        <li class="lp-usecase">
+          <h3 class="lp-usecase__title">Air-gapped networks</h3>
+          <p class="lp-usecase__body">
+            Pre-warm the cache where there is connectivity, then serve the isolated network with
+            no upstream dependency at all.
+          </p>
+        </li>
+      </ul>
+    </section>
+
+    <section class="lp-arch" aria-labelledby="lp-arch-title">
+      <h2 id="lp-arch-title" class="lp-section-title lp-section-title--center">
+        How it fits in your account
+      </h2>
+      <ArchDiagram />
+    </section>
+
+    <section class="lp-quickstart" aria-labelledby="lp-quickstart-title">
+      <h2 id="lp-quickstart-title" class="lp-section-title lp-section-title--center">
+        Up and running in two commands
+      </h2>
+      <div class="lp-quickstart__panel">
+        <pre class="lp-quickstart__code" tabindex="0"><code>export PULSYS_HF_TOKEN=hf_your_readonly_token
+docker compose up --build</code></pre>
+        <pre class="lp-quickstart__code" tabindex="0"><code>export HF_ENDPOINT=http://localhost:8082
+export HF_TOKEN=pulsys_...
+{cliBinName} download {demoModelId}   # next run is served from disk</code></pre>
+      </div>
+      <div class="lp-cta-row lp-cta-row--center">
+        <a class="btn btn--primary btn--lg lp-cta" href={getStartedHref}>Read the docs</a>
+        <a
+          class="btn btn--secondary btn--lg lp-cta"
+          href={repoHref}
+          target="_blank"
+          rel="noopener noreferrer">Star on GitHub</a>
+      </div>
+    </section>
+
+    <section class="lp-faq" aria-labelledby="lp-faq-title">
+      <h2 id="lp-faq-title" class="lp-section-title lp-section-title--center">Frequently asked questions</h2>
+      <div class="lp-faq__list" role="list">
+        <details class="lp-faq__item" role="listitem">
+          <summary class="lp-faq__q">
+            <span class="lp-faq__q-text">What clients and artifact types are supported?</span>
+            <svg class="lp-faq__chevron" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M4 6 L8 10 L12 6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </summary>
+          <div class="lp-faq__a">
+            <p>
+              Any HTTP client that speaks the Hugging Face Hub wire protocol. Use the <code>hf</code> CLI,
+              <code>huggingface_hub</code>, <code>transformers</code>, or <code>datasets</code> with
+              <code>HF_ENDPOINT</code> pointed at Pulsys and a <code>pulsys_*</code> API key as
+              <code>HF_TOKEN</code>.
+            </p>
+          </div>
+        </details>
+
+        <details class="lp-faq__item" role="listitem">
+          <summary class="lp-faq__q">
+            <span class="lp-faq__q-text">Does it work with <code>hf_transfer</code>?</span>
+            <svg class="lp-faq__chevron" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M4 6 L8 10 L12 6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </summary>
+          <div class="lp-faq__a">
+            <p>Yes. Set <code>HF_ENDPOINT</code> to the proxy URL and export <code>HF_HUB_ENABLE_HF_TRANSFER=1</code> as usual.</p>
+          </div>
+        </details>
+
+        <details class="lp-faq__item" role="listitem">
+          <summary class="lp-faq__q">
+            <span class="lp-faq__q-text">Where do credentials live?</span>
+            <svg class="lp-faq__chevron" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M4 6 L8 10 L12 6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </summary>
+          <div class="lp-faq__a">
+            <p>
+              The server holds a read-only Hugging Face token (<code>PULSYS_HF_TOKEN</code>) for upstream
+              fetches on cache miss. Clients use Pulsys API keys issued from the admin UI; Pulsys never
+              forwards client credentials to Hugging Face. See the
+              <a href={`${docsHref}/security/`}>security doc</a>.
+            </p>
+          </div>
+        </details>
+
+        <details class="lp-faq__item" role="listitem">
+          <summary class="lp-faq__q">
+            <span class="lp-faq__q-text">What happens on an upstream outage or a full cache disk?</span>
+            <svg class="lp-faq__chevron" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M4 6 L8 10 L12 6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </summary>
+          <div class="lp-faq__a">
+            <p>Upstream outage: the warm cache keeps serving cached artifacts. Disk full: set a hard storage quota with <code>-cache-max-bytes</code>; new cache fills return a clean <code>507</code>, imports fail with an actionable error, and operators can purge models from the console.</p>
+          </div>
+        </details>
+
+        <details class="lp-faq__item" role="listitem">
+          <summary class="lp-faq__q">
+            <span class="lp-faq__q-text">Can instances share storage like EFS or S3?</span>
+            <svg class="lp-faq__chevron" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M4 6 L8 10 L12 6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </summary>
+          <div class="lp-faq__a">
+            <p>No. Dedicated EBS with provisioned throughput sustains the warm path; shared filesystems cap throughput well below local disk.</p>
+          </div>
+        </details>
+
+        <details class="lp-faq__item" role="listitem">
+          <summary class="lp-faq__q">
+            <span class="lp-faq__q-text">What does the observability surface look like?</span>
+            <svg class="lp-faq__chevron" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M4 6 L8 10 L12 6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </summary>
+          <div class="lp-faq__a">
+            <p>
+              <code>/healthz</code> and <code>/readyz</code> on the data plane are unauthenticated.
+              Prometheus <code>/metrics</code> is on the admin listener (keep it on loopback in production).
+              JSON logs to stdout.
+            </p>
+          </div>
+        </details>
+
+        <details class="lp-faq__item" role="listitem">
+          <summary class="lp-faq__q">
+            <span class="lp-faq__q-text">TLS, load balancers, multi-instance HA?</span>
+            <svg class="lp-faq__chevron" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M4 6 L8 10 L12 6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </summary>
+          <div class="lp-faq__a">
+            <p>An ALB terminates TLS and fronts an ASG of proxy instances. Each instance keeps its own warm cache.</p>
+          </div>
+        </details>
+
+        <details class="lp-faq__item" role="listitem">
+          <summary class="lp-faq__q">
+            <span class="lp-faq__q-text">Can I pre-warm the cache before traffic arrives?</span>
+            <svg class="lp-faq__chevron" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M4 6 L8 10 L12 6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </summary>
+          <div class="lp-faq__a">
+            <p>Yes. Point a client at the proxy for the repos you want resident, or use the admin import API to fetch them asynchronously before traffic arrives.</p>
+          </div>
+        </details>
+
+        <details class="lp-faq__item" role="listitem">
+          <summary class="lp-faq__q">
+            <span class="lp-faq__q-text">How are updates and breaking changes released?</span>
+            <svg class="lp-faq__chevron" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M4 6 L8 10 L12 6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </summary>
+          <div class="lp-faq__a">
+            <p>Tagged GitHub Releases with signed binaries and checksums, plus multi-arch container images on GHCR and a versioned Helm chart. Semantic versioning: breaking changes get a major bump with migration notes.</p>
+          </div>
+        </details>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    import { create } from 'asciinema-player';
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function mountTerminal() {
+      const el = document.getElementById('asciinema-hf-demo');
+      if (!el || reduceMotion) return;
+      create(`${import.meta.env.BASE_URL}demos/hf-warm-demo.cast`, el, {
+        fit: 'width',
+        rows: 8,
+        cols: 52,
+        theme: 'dracula',
+        loop: true,
+        autoPlay: true,
+        speed: 1.0,
+      });
+    }
+
+    mountTerminal();
+  </script>
+</Layout>
+
+<style>
+  .lp-charts {
+    display: grid;
+    gap: 1.25rem;
+    margin: 2rem 0 1rem;
+  }
+  .lp-chart {
+    margin: 0;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .lp-chart img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .lp-chart figcaption {
+    padding: 0.65rem 1rem;
+    font-size: 0.8125rem;
+    color: rgba(255, 255, 255, 0.55);
+  }
+  .lp-chart--wide {
+    grid-column: 1 / -1;
+  }
+  @media (min-width: 900px) {
+    .lp-charts {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  .tabular-sm {
+    font-size: clamp(1.25rem, 3vw, 1.75rem);
+  }
+
+  .lp-features,
+  .lp-usecases,
+  .lp-quickstart {
+    padding: clamp(2.5rem, 5vh, 3.5rem) 0 0;
+    border-top: 1px solid var(--separator);
+    margin-top: clamp(2.5rem, 5vh, 3.5rem);
+  }
+
+  .lp-section-lead {
+    margin: -0.75rem auto 2rem;
+    max-width: 60ch;
+    text-align: center;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  .lp-feature-grid,
+  .lp-usecase-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1rem;
+  }
+
+  @media (min-width: 700px) {
+    .lp-feature-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .lp-usecase-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1000px) {
+    .lp-feature-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .lp-feature,
+  .lp-usecase {
+    border: 1px solid var(--separator);
+    border-radius: 12px;
+    padding: 1.25rem 1.25rem 1.35rem;
+    background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+  }
+
+  .lp-feature__title,
+  .lp-usecase__title {
+    margin: 0;
+    font-size: 0.9875rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+
+  .lp-feature__body,
+  .lp-usecase__body {
+    margin: 0.5rem 0 0;
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+  }
+
+  .lp-quickstart__panel {
+    display: grid;
+    gap: 1rem;
+    max-width: 46rem;
+    margin: 0 auto;
+  }
+
+  .lp-quickstart__code {
+    margin: 0;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--separator);
+    border-radius: 12px;
+    background: #07080b;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.6;
+  }
+
+  .lp-quickstart__code code {
+    background: none;
+    border: none;
+    padding: 0;
+  }
+
+  .lp-cta-row--center {
+    justify-content: center;
+    margin-top: 2rem;
+  }
+</style>

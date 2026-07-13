@@ -1,0 +1,33 @@
+pulsys {{ .Chart.AppVersion }} has been deployed as release "{{ .Release.Name }}".
+
+Data plane (Hugging Face cache):
+{{- if .Values.ingress.enabled }}
+  Reachable via Ingress:
+  {{- range .Values.ingress.hosts }}
+  {{- range .paths }}
+    http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host | default (index $.Values.ingress.hosts 0).host }}{{ .path }}
+  {{- end }}
+  {{- end }}
+{{- else if eq .Values.service.type "ClusterIP" }}
+  In-cluster Service: {{ include "pulsys.fullname" . }}:{{ .Values.service.port }}
+  Port-forward to try it locally:
+    kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "pulsys.fullname" . }} 8080:{{ .Values.service.port }}
+{{- else }}
+  Service type {{ .Values.service.type }} on port {{ .Values.service.port }}.
+{{- end }}
+
+Point the Hugging Face client at the proxy:
+
+    HF_ENDPOINT=http://<proxy-host>:{{ .Values.service.port }} hf download gpt2
+
+Admin plane (tenant: {{ .Values.admin.tenant }}) is enabled and required.
+  - Admin/metrics port: {{ .Values.service.adminPort }} (/admin/api/v1, /metrics, /healthz)
+  - Every data-plane request requires a Bearer PAT (issue one via the admin API).
+  {{- if .Values.oidc.enabled }}
+  - OIDC login configured against issuer: {{ .Values.oidc.issuer }}
+  {{- else }}
+  - OIDC is disabled; enable it with oidc.enabled=true for console login.
+  {{- end }}
+
+Verify the deployment:
+    helm test {{ .Release.Name }} --namespace {{ .Release.Namespace }}

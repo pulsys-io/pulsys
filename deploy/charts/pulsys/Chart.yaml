@@ -1,0 +1,41 @@
+apiVersion: v2
+name: pulsys
+description: A high-performance Hugging Face disk-caching reverse proxy with a required Pulsys admin plane (OIDC, RBAC, audit, imports).
+type: application
+# version  -> chart SemVer; bumped by chart-releaser/release tooling.
+# appVersion -> the pulsys container image tag this chart targets.
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.27.0-0"
+icon: https://pulsys.io/logo.svg
+home: https://github.com/pulsys-io/pulsys
+sources:
+  - https://github.com/pulsys-io/pulsys
+keywords:
+  - huggingface
+  - cache
+  - proxy
+  - llm
+  - models
+  - registry
+maintainers:
+  - name: ajbeach2
+    url: https://github.com/ajbeach2
+annotations:
+  # Artifact Hub metadata (https://artifacthub.io/docs/topics/annotations/helm/)
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/links: |
+    - name: source
+      url: https://github.com/pulsys-io/pulsys
+    - name: documentation
+      url: https://github.com/pulsys-io/pulsys/blob/main/deploy/charts/pulsys/README.md
+    - name: security
+      url: https://github.com/pulsys-io/pulsys/blob/main/SECURITY.md
+  artifacthub.io/signKey: |
+    fingerprint: provenance signed with cosign keyless (Sigstore)
+    url: https://github.com/pulsys-io/pulsys/blob/main/SECURITY.md
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/prerelease: "true"
+  artifacthub.io/images: |
+    - name: pulsys
+      image: ghcr.io/pulsys-io/pulsys:0.1.0

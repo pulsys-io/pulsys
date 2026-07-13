@@ -1,0 +1,7 @@
+.next/
+out/
+.env*.local
+tsconfig.tsbuildinfo
+test-results/
+playwright-report/
+test-artifacts/

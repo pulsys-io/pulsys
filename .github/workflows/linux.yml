@@ -1,0 +1,108 @@
+# Linux CI: build + race-detector test suite on every push and PR.
+#
+# This is the canonical "did it pass on Linux?" answer.  Docker on macOS
+# Docker on macOS is the inner loop; this workflow is the truth
+# loop and runs against ubuntu-latest with Postgres for auth-contract tests.
+#
+# Perf benchmarks are NOT run here -- GitHub runners are noisy and shared.
+# Real performance numbers come from the SSM-driven bench on a Packer AMI
+# (see docs/benchmarks.md).
+
+name: linux
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pulsys
+          POSTGRES_PASSWORD: pulsys
+          POSTGRES_DB: pulsys
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      PULSYS_TEST_PG_DSN: postgres://pulsys:pulsys@localhost:5432/pulsys?sslmode=disable
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          # llhttp parser test corpus (skipped when absent; required here so
+          # the full smuggling corpus runs on every commit).
+          submodules: true
+
+      - name: setup go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.25.11'
+          cache: true
+
+      - name: environment
+        run: |
+          echo "kernel: $(uname -a)"
+          echo "go: $(go version)"
+          echo "ulimits:"
+          ulimit -a
+
+      - name: vet
+        run: go vet ./...
+
+      - name: build
+        run: go build ./...
+
+      - name: test (race, -count=1, coverage)
+        run: go test -race -count=1 -timeout 5m -covermode=atomic -coverprofile=coverage.out ./...
+
+      # Coverage is published as a build artifact (no third-party upload, no
+      # secrets in CI). Download it from the run summary or render locally with
+      # `go tool cover -html=coverage.out`.
+      - name: upload coverage artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage
+          path: coverage.out
+          if-no-files-found: error
+
+  admin-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: setup node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: admin-ui/package-lock.json
+
+      - name: install
+        working-directory: admin-ui
+        run: npm ci
+
+      - name: build
+        working-directory: admin-ui
+        run: npm run build

@@ -1,0 +1,49 @@
+version: 2
+updates:
+  # GitHub Actions: keeps action versions current (and, with Scorecard's
+  # pinned-dependencies guidance, makes SHA bumps reviewable in one place).
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+    labels: ["area/ci", "type/refactor"]
+
+  # Go module.
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels: ["type/refactor"]
+    groups:
+      go-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # JavaScript / TypeScript workspaces.
+  - package-ecosystem: npm
+    directory: "/website"
+    schedule:
+      interval: weekly
+    labels: ["area/website"]
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
+  - package-ecosystem: npm
+    directory: "/admin-ui"
+    schedule:
+      interval: weekly
+    labels: ["area/admin-plane"]
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
+  - package-ecosystem: npm
+    directory: "/infra/cdk"
+    schedule:
+      interval: weekly
+    labels: ["area/aws"]
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]

@@ -1,0 +1,59 @@
+#!/usr/bin/env sh
+# Optional pre-commit hook for pulsys contributors.
+#
+# It is NOT installed automatically (the project has no Node/husky
+# dependency). Opt in with:
+#
+#   git config core.hooksPath scripts/git-hooks
+#
+# CI enforces the same gofmt / vet checks, so this hook only exists to
+# catch problems earlier and locally. Bypass a single commit with
+# `git commit --no-verify`.
+#
+# Steps:
+#   1. Block obvious secret/leak patterns in staged files.
+#   2. gofmt -l staged .go files; fail if any need formatting.
+#   3. go vet ./... when Go files are staged.
+set -e
+
+STAGED_ALL=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$STAGED_ALL" ] && exit 0
+
+# ---- 1. Block obviously sensitive content -------------------------------
+BLOCK_PATTERNS='AKIA[0-9A-Z]{16}|-----BEGIN (RSA |OPENSSH |PRIVATE |EC )?PRIVATE KEY-----|aws_secret_access_key[[:space:]]*=|hf_[A-Za-z0-9]{32,}'
+LEAKS=""
+for f in $STAGED_ALL; do
+  [ -f "$f" ] || continue
+  case "$f" in
+    docs/results/*|website/public/results/*) continue ;;
+  esac
+  if git show ":$f" 2>/dev/null | grep -E "$BLOCK_PATTERNS" >/dev/null 2>&1; then
+    LEAKS="$LEAKS\n  $f"
+  fi
+done
+if [ -n "$LEAKS" ]; then
+  printf 'pre-commit: refusing to commit possible secrets:%b\n' "$LEAKS" 1>&2
+  printf 'pre-commit: bypass with `git commit --no-verify` only after manual review.\n' 1>&2
+  exit 1
+fi
+
+# ---- 2. Go formatting / vet ---------------------------------------------
+GO_FILES=$(echo "$STAGED_ALL" | grep -E '\.go$' || true)
+if [ -n "$GO_FILES" ]; then
+  if command -v gofmt >/dev/null 2>&1; then
+    UNFMT=$(gofmt -l $GO_FILES || true)
+    if [ -n "$UNFMT" ]; then
+      printf 'pre-commit: gofmt would reformat these files:\n%s\n' "$UNFMT" 1>&2
+      printf 'pre-commit: run `gofmt -w` on them and re-stage.\n' 1>&2
+      exit 1
+    fi
+  fi
+  if command -v go >/dev/null 2>&1; then
+    if ! go vet ./cmd/... ./internal/... 2>&1; then
+      echo 'pre-commit: go vet failed.' 1>&2
+      exit 1
+    fi
+  fi
+fi
+
+exit 0

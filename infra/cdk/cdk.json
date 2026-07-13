@@ -1,0 +1,23 @@
+{
+  "app": "npx ts-node --prefer-ts-exts bin/bench.ts",
+  "watch": {
+    "include": ["**"],
+    "exclude": [
+      "README.md",
+      "cdk*.json",
+      "**/*.d.ts",
+      "**/*.js",
+      "tsconfig.json",
+      "package*.json",
+      "node_modules",
+      "cdk.out"
+    ]
+  },
+  "context": {
+    "@aws-cdk/core:target-partitions": ["aws"],
+
+    "amiKind": "stock",
+    "instanceType": "c7i.12xlarge",
+    "stackName": "PulsysBench"
+  }
+}

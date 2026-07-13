@@ -1,0 +1,170 @@
+# HTTP Request Smuggling corpus (PortSwigger / James Kettle research)
+#
+# Each fixture is a literal byte sequence drawn from public smuggling
+# research and intended to be REJECTED by coreserver's request parser
+# (parser_smuggling_corpus_test.go enforces this).  Some entries are
+# also accepted by Go's net/http, which is fine -- the asymmetry is
+# exactly what hardens us against a frontend / backend desync.
+#
+# Format
+# ------
+# Each record begins with one or more lines of "=== <key>: <value>"
+# metadata, followed by a literal HTTP wire payload that runs until
+# the next "===" line.  The payload uses the standard "\r\n" escape
+# convention; lines in the file are converted to CRLF on load.  A
+# trailing blank line in the payload (i.e. "\r\n\r\n" terminator) is
+# REQUIRED for the parser to recognise the request as complete.
+#
+# Keys
+#   name:        Stable identifier (used in subtest names).
+#   source:      URL or paper citation.  Public research only.
+#   expected:    one of: reject (must fail parse) | accept (must
+#                succeed; rare -- usually a control case).
+#   note:        One-line rationale.
+#
+# Adding entries
+# --------------
+# Public CTF writeups, PortSwigger Academy labs, the original "HTTP
+# Desync Attacks" DEF CON 2019 talk, "Browser-Powered Desync" (2022),
+# and the http_smuggler tooling are all citable.  Avoid lifting
+# fixtures verbatim from anything labelled as confidential or under
+# a proprietary licence; reword the payload if necessary while
+# preserving the desync primitive.
+
+=== name: te_chunked_lf_after_te_keyword
+=== source: https://portswigger.net/research/http-desync-attacks-request-smuggling-reborn
+=== expected: reject
+=== note: TE: chunked\n with bare LF after the TE keyword; some parsers strip it, ours must refuse.
+POST /smuggle HTTP/1.1\r\nHost: example.com\r\nTransfer-Encoding: chunked\nContent-Length: 4\r\n\r\n5\r\nhello\r\n0\r\n\r\n
+
+=== name: te_obfuscated_with_tab
+=== source: https://portswigger.net/web-security/request-smuggling/finding
+=== expected: reject
+=== note: Tab between header name and colon -- TE header smuggled past validators that split on space.
+POST /a HTTP/1.1\r\nHost: example.com\r\nTransfer-Encoding\t: chunked\r\nContent-Length: 4\r\n\r\n0\r\n\r\n
+
+=== name: te_obfuscated_with_vertical_tab
+=== source: https://portswigger.net/research/http-desync-attacks-request-smuggling-reborn
+=== expected: reject
+=== note: VT (0x0B) is whitespace per some lenient parsers; tchar excludes it so header name is invalid.
+POST /a HTTP/1.1\r\nHost: example.com\r\nTransfer-Encoding\x0b: chunked\r\nContent-Length: 4\r\n\r\n0\r\n\r\n
+
+=== name: te_capitalised_chunked_value
+=== source: https://portswigger.net/research/http-desync-attacks-request-smuggling-reborn
+=== expected: reject
+=== note: TE value is case-insensitive; "Chunked" must still trigger our TE-not-identity refusal.
+POST /a HTTP/1.1\r\nHost: example.com\r\nTransfer-Encoding: Chunked\r\n\r\n0\r\n\r\n
+
+=== name: te_xchunked_value
+=== source: https://portswigger.net/research/http-desync-attacks-request-smuggling-reborn
+=== expected: reject
+=== note: "xchunked" -- some parsers accept any TE value containing "chunked"; ours requires exact "identity" or rejection.
+POST /a HTTP/1.1\r\nHost: example.com\r\nTransfer-Encoding: xchunked\r\n\r\n0\r\n\r\n
+
+=== name: te_chunked_extra_spaces
+=== source: https://portswigger.net/research/http-desync-attacks-v2-browser
+=== expected: reject
+=== note: "Transfer-Encoding:    chunked" with leading internal spaces; some parsers trim, others don't.
+POST /a HTTP/1.1\r\nHost: example.com\r\nTransfer-Encoding:    chunked\r\n\r\n0\r\n\r\n
+
+=== name: te_dup_chunked_value
+=== source: https://portswigger.net/research/http-desync-attacks-v2-browser
+=== expected: reject
+=== note: "Transfer-Encoding: chunked, chunked" -- some parsers see the first, some the second.
+POST /a HTTP/1.1\r\nHost: example.com\r\nTransfer-Encoding: chunked, chunked\r\n\r\n0\r\n\r\n
+
+=== name: te_with_cl
+=== source: https://portswigger.net/research/http-desync-attacks-request-smuggling-reborn
+=== expected: reject
+=== note: RFC 7230 5.3.3 -- TE and CL together MUST be refused.
+POST /a HTTP/1.1\r\nHost: example.com\r\nTransfer-Encoding: chunked\r\nContent-Length: 6\r\n\r\n0\r\n\r\nX
+
+=== name: cl_cl_same_value
+=== source: https://portswigger.net/research/http-desync-attacks-v2-browser
+=== expected: reject
+=== note: Duplicate Content-Length even with matching values is a smuggling vector.
+POST /a HTTP/1.1\r\nHost: example.com\r\nContent-Length: 5\r\nContent-Length: 5\r\n\r\nhello
+
+=== name: cl_cl_different_values
+=== source: https://portswigger.net/research/http-desync-attacks-request-smuggling-reborn
+=== expected: reject
+=== note: Classic CL.CL: ambiguous which value the proxy follows.
+POST /a HTTP/1.1\r\nHost: example.com\r\nContent-Length: 5\r\nContent-Length: 6\r\n\r\nhellos
+
+=== name: cl_with_leading_plus
+=== source: https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2
+=== expected: reject
+=== note: "Content-Length: +5" -- C-style strtol accepts the sign; HTTP grammar does not.
+POST /a HTTP/1.1\r\nHost: example.com\r\nContent-Length: +5\r\n\r\nhello
+
+=== name: cl_with_hex
+=== source: https://datatracker.ietf.org/doc/html/rfc7230#section-3.3.2
+=== expected: reject
+=== note: "Content-Length: 0x5" -- non-decimal CL is a parser-disagreement vector.
+POST /a HTTP/1.1\r\nHost: example.com\r\nContent-Length: 0x5\r\n\r\nhello
+
+=== name: bare_cr_in_header_value
+=== source: https://portswigger.net/web-security/response-splitting
+=== expected: reject
+=== note: Bare CR inside a header value enables HTTP response splitting and request smuggling.
+GET /a HTTP/1.1\r\nHost: example.com\r\nX-Hdr: foo\rSet-Cookie: smug=1\r\n\r\n
+
+=== name: bare_lf_inside_header_block
+=== source: https://datatracker.ietf.org/doc/html/rfc7230#section-3.5
+=== expected: reject
+=== note: Bare LF as line terminator inside the block is a robust-parser exploit (Chromium CVE-2017-5057 class).
+GET /a HTTP/1.1\nHost: example.com\nX-Hdr: foo\n\n
+
+=== name: nul_in_header_value
+=== source: https://portswigger.net/research/http-desync-attacks-request-smuggling-reborn
+=== expected: reject
+=== note: NUL byte in a header value is rejected by RFC 7230 field-content grammar.
+GET /a HTTP/1.1\r\nHost: example.com\r\nX-Hdr: foo\x00bar\r\n\r\n
+
+=== name: nul_in_header_name
+=== source: https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6
+=== expected: reject
+=== note: NUL byte in a header NAME violates the tchar grammar.
+GET /a HTTP/1.1\r\nHost: example.com\r\nX-\x00Hdr: foo\r\n\r\n
+
+=== name: obsolete_line_folding
+=== source: https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.4
+=== expected: reject
+=== note: obs-fold lets headers be hidden from name-only validators that don't follow continuations.
+GET /a HTTP/1.1\r\nHost: example.com\r\nX-Hdr: first\r\n second\r\n\r\n
+
+=== name: duplicate_host
+=== source: https://datatracker.ietf.org/doc/html/rfc7230#section-5.4
+=== expected: reject
+=== note: Multiple Host headers enable routing-based smuggling.
+GET /a HTTP/1.1\r\nHost: example.com\r\nHost: evil.example\r\n\r\n
+
+=== name: absolute_form_target
+=== source: https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.2
+=== expected: reject
+=== note: Absolute-form target is only legal to a forward proxy; pulsys is not one.
+GET http://internal:8080/a HTTP/1.1\r\nHost: example.com\r\n\r\n
+
+=== name: lowercase_method
+=== source: https://datatracker.ietf.org/doc/html/rfc7230#section-3.1.1
+=== expected: reject
+=== note: Method tokens are case-sensitive; lowercase "get" is admitted by Go's lenient parser but rejected by most prod servers.
+get /a HTTP/1.1\r\nHost: example.com\r\n\r\n
+
+=== name: http_2_prelude_over_http_1
+=== source: https://portswigger.net/research/http2-the-sequel-is-always-worse
+=== expected: reject
+=== note: An "HTTP/2.0" version line over an HTTP/1 framer is the classic h2c upgrade smuggling primitive.
+GET /a HTTP/2.0\r\nHost: example.com\r\n\r\n
+
+=== name: http_0_9_downgrade
+=== source: https://datatracker.ietf.org/doc/html/rfc1945
+=== expected: reject
+=== note: HTTP/0.9 has no header section; admitting it lets attacker-controlled bytes be interpreted as a body.
+GET /a HTTP/0.9\r\nHost: example.com\r\n\r\n
+
+=== name: connection_keep_alive_close_token_smuggle
+=== source: https://portswigger.net/research/http-desync-attacks-v2-browser
+=== expected: accept
+=== note: Connection header with the "close" token alongside another value -- valid and must parse; we just track close.
+GET /a HTTP/1.1\r\nHost: example.com\r\nConnection: keep-alive, close\r\n\r\n

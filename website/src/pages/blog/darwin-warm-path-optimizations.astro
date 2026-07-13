@@ -1,0 +1,220 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+const publishedDate = '2026-05-16';
+---
+
+<Layout
+  title="Chasing the Absolute Floor: Zero-Copy, Single-Syscall HTTP on Darwin in Go"
+  description="An engineering journey from the default Go net/http serve loop to a perfectly fused, single-syscall cache hit on macOS."
+  current="blog"
+>
+  <article class="wrap legal">
+    <h1>Chasing the Absolute Floor: Zero-Copy, Single-Syscall HTTP on Darwin in Go</h1>
+    <p class="post-meta tabular">
+      <time datetime={publishedDate}>May 16, 2026</time>
+    </p>
+
+    <p class="lead">
+      Serving a cached HTTP response should be simple: move bytes from disk to a network socket. But every time data
+      crosses the user/kernel boundary, you pay a tax. Standard HTTP servers cross this boundary multiple times per
+      request, burning CPU cycles on context switches and userspace memory copies.
+    </p>
+
+    <p>
+      For a throughput-oriented proxy, that overhead sets the performance ceiling far too low. The goal isn't just to
+      be "fast"; the goal is to hit the absolute theoretical minimum. To serve data over a network, something must
+      cross the kernel boundary at least once. Therefore, the perfect execution is exactly one boundary crossing.
+    </p>
+
+    <p>
+      This proxy is ultimately destined for bare-metal Linux in production. But, like many engineers, my daily
+      development environment is Darwin (macOS). Usually, we accept local macOS performance as a compromised, "good
+      enough" baseline before doing the real optimization on Linux. I wanted to reject that compromise and force the
+      local development loop to hit the theoretical syscall floor first.
+    </p>
+
+    <p>
+      This constraint uncovered the most interesting part of the architecture. While achieving a single fused syscall
+      on Linux requires complex <code>io_uring</code> chains or <code>TCP_CORK</code> tricks, Darwin hides a beautiful,
+      native mechanism to fuse HTTP headers and a file body into one single kernel transition.
+    </p>
+
+    <p>
+      Here is the path from the default <code>net/http</code> loop to a macOS warm-cache hit that uses
+      <code>sendfile</code> with header trailers.
+    </p>
+
+    <h2>The Default Cost of Doing Business</h2>
+    <p>
+      A standard Go HTTP handler serving bytes from disk does exactly what you'd expect: it reads the file into a
+      userspace buffer in 32&nbsp;KiB chunks, and writes it out to the socket.
+    </p>
+    <p>
+      This is structurally inefficient. You pay for two boundary crossings per chunk, every single byte of the payload
+      is unnecessarily touched in userspace, and the garbage collector sees a steady drip of buffers and slices. For a
+      256&nbsp;KiB body, you are paying eight or nine syscalls and several allocations per response. The syscall count
+      scales linearly with the body size, and the handler sits stubbornly at the top of your allocation profile.
+    </p>
+
+    <h2>The First Leap: Dropping the Userspace Copy</h2>
+    <p>
+      Once <code>sync.Pool</code> and per-request buffer reuse scrubbed the obvious allocations off the hot path, the
+      profile pointed to the next layer of overhead: kernel transitions.
+    </p>
+    <p>
+      The first logical step in optimizing file transfers is reaching for <code>sendfile(2)</code>, an operating
+      system call for sending file bytes directly to a socket. By handing a file descriptor and a socket directly to
+      the kernel, you ask the OS to move the bytes directly, often straight from the page cache to the NIC. The Go
+      handler never even sees the response body.
+    </p>
+    <p>
+      Go can reach this path automatically in the simple case: copying from an <code>*os.File</code> to a
+      <code>*net.TCPConn</code> lets the standard library call <code>sendfile(2)</code> under the hood. For the fused
+      path in this proxy, I go one layer lower. The server gets the connection's <code>syscall.RawConn</code> and calls
+      <code>unix.Sendfile</code> directly, because Go's HTTP APIs do not expose Darwin's header-fusion argument.
+    </p>
+    <p>
+      With this implemented, the chunked write loop collapses. The handler drops out of the alloc profile entirely,
+      and the syscall count per response finally stops scaling with body size.
+    </p>
+
+    <h2>The Lingering Bottleneck: HTTP Headers</h2>
+    <p>
+      While <code>sendfile</code> solves the body transfer, HTTP still demands a status line and headers.
+    </p>
+    <p>
+      The standard optimized sequence involves two steps: one <code>write</code> syscall for the head, followed
+      immediately by the <code>sendfile</code> syscall for the body. Two syscalls per response. On Linux, you can
+      hide the TCP segmentation cost with <code>TCP_CORK</code>, a socket option that tells the kernel to hold small
+      writes briefly so it can send them together, but you still pay for both syscalls.
+    </p>
+    <p>
+      To collapse them, you usually need highly complex <code>io_uring</code> SQE chaining: a Linux interface where a
+      program queues I/O work for the kernel using SQEs, or submission queue entries, which are individual operation
+      requests that can be linked into one kernel-side sequence. But Darwin offers a native, hidden trick.
+    </p>
+
+    <h2>The Darwin Magic: <code>sf_hdtr</code></h2>
+    <p>
+      Darwin's <code>sendfile(2)</code> implementation accepts an <code>sf_hdtr</code> argument.
+    </p>
+    <p>
+      This argument is an iovec list that can be emitted immediately before the file range (plus an optional trailer).
+      By rendering the HTTP response head into a scratch buffer and pointing <code>sf_hdtr</code> directly at it, a
+      single syscall ships both the headers and the body simultaneously.
+    </p>
+    <p>
+      The boundary crossing is now at its theoretical minimum: one. To serve data over a network, something has to
+      cross the boundary at least once. But now, it only crosses once.
+    </p>
+
+    <h2>Where the Floor Stops Holding</h2>
+    <p>
+      Reality still applies, and physics always wins. This single-syscall floor is conditional on the file body
+      fitting into the effective socket send buffer (<code>SO_SNDBUF</code>).
+    </p>
+    <p>
+      If the payload exceeds the buffer, <code>sendfile</code> returns short, and the Go runtime will loop until the
+      range is fully drained. However, it is crucial to recognize that these extra calls are caused by back-pressure
+      from the peer, not Go runtime overhead. Send-buffer autotuning naturally narrows this gap, and for the cache's
+      typical shard sizes, the one-syscall floor holds firm.
+    </p>
+
+    <h2>Verifying the Floor: The Empty Profile</h2>
+    <p>
+      Theory is meaningless without verification. When counted under <code>wrk</code>, an HTTP benchmarking tool,
+      against a 256&nbsp;KiB warm payload, the execution ratio was flawless: exactly <strong>1.000000</strong> fused
+      <code>sendfile(2)</code> calls per cache hit.
+    </p>
+    <p>
+      There were no <code>EAGAIN</code> retries, where the kernel tells the program to try again because the socket's
+      send buffer is full until the peer drains more bytes, no partial transfers, and no rogue header writes outside
+      the fused call. The kernel executes exactly one round trip per cached response.
+    </p>
+    <pre class="code-block"><code>256 KiB warm-cache run on Darwin
+load generator: wrk, an HTTP benchmarking tool
+counter source: /debug/vars expvar counters sampled before and after the run
+
+wrk: 30,150 req/s for 3.10s = 93,465 requests
+
+counter                         before    after     delta
+pulsys_cache_hits                    2   93,469   93,467
+pulsys_sendfile_fused_calls        254   93,721   93,467
+pulsys_sendfile_eagains            252      252        0
+
+fused sendfile calls / cache hits = 1.000000</code></pre>
+    <p>
+      The ultimate flex in performance engineering is when your code is so fast it disappears from the profiler. With
+      <code>MemProfileRate=1</code>, a short warm burst captures almost all allocations from <code>pprof</code> itself:
+      gzip frames, the profile builder, and sample bookkeeping. The serve path does not appear at all.
+    </p>
+    <pre class="code-block"><code>=== alloc_objects, top of server hot path during warm hammering (rate=1) ===
+File: pulsys
+Type: alloc_objects
+Time: 2026-05-15 20:19:16 PDT
+Duration: 4s, Total samples = 0 (filtered)
+Showing nodes accounting for 678, 100.00% of 678 total
+
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%        678 95.76%  net/http.(*ServeMux).ServeHTTP        &lt;- /debug/pprof admin port
+         0     0%     0%        678 95.76%  net/http/pprof.Index                  &lt;-   |
+         0     0%     0%        678 95.76%  runtime/pprof.(*Profile).WriteTo      &lt;-   |
+         1  0.14%  0.14%        678 95.76%  runtime/pprof.writeHeapInternal       &lt;-   |
+        27  3.81%  3.95%        677 95.62%  runtime/pprof.writeHeapProto          &lt;-   |
+       396 55.93% 60.45%        396 55.93%  runtime/pprof.allFrames               &lt;-   |   pprof
+       177 25.00% 85.45%        225 31.78%  runtime/pprof.(*profileBuilder).emitLocation    &lt;-   |   collecting
+        29     -      -          29  4.10%  compress/gzip ... compress/flate      &lt;-   |   itself
+        13     -      -          13  1.84%  runtime.gcBgMarkWorker                &lt;- GC bookkeeping</code></pre>
+    <p>
+      When the hot path stops allocating entirely, you read the trace for the absence of nodes, rather than flame
+      graph complexity.
+    </p>
+
+    <h2>The Final Polish: Scrubbing the Closure</h2>
+    <p>
+      Getting a hot path this clean exposes microscopic inefficiencies you would otherwise never notice.
+    </p>
+    <p>
+      Even with the fused syscall in place, one stubborn allocation remained. Passing a method value into
+      <code>syscall.RawConn</code>'s write callback allocated a closure on every single request. By binding the
+      callback just once inside <code>sync.Pool.New</code>, we scrubbed the final lingering allocation off the path.
+      It’s a fix that only surfaces when you are already syscall- and copy-minimal.
+    </p>
+
+    <h2>The Elephant in the Room: Why Not Rust?</h2>
+    <p>
+      When you build a low-copy warm path in a garbage-collected language, the inevitable question is: Why not
+      Rust?
+    </p>
+    <p>The short answer is developer velocity.</p>
+    <p>
+      Once you reduce a network request to exactly one kernel boundary crossing, the language runtime stops being the
+      bottleneck. Physics, the kernel, and the NIC take over.
+    </p>
+    <p>
+      Even memory overhead is practically non-existent. As the benchmark shows, this hot path barely feeds the garbage
+      collector:
+    </p>
+    <pre class="code-block code-block--fit"><code>$ go test -run=__none -bench=BenchmarkWarmCache -benchmem ./...
+goos: darwin
+goarch: arm64
+pkg: pulsys warm cache path
+cpu: Apple M2 Pro
+BenchmarkWarmCache_256KiB-12    21301	   53685 ns/op	  4883.01 MB/s	  256 B/op	 1 allocs/op
+BenchmarkWarmCache_4MiB-12       2503	  512859 ns/op	  8178.27 MB/s	  256 B/op	 1 allocs/op
+PASS
+ok  	pulsys warm cache path	3.259s</code></pre>
+    <p>
+      A perfectly tuned Rust implementation might squeeze out 5% more throughput by eliminating GC bookkeeping. But
+      chasing that final margin means accepting glacial compile times and fighting strict ownership rules just to move
+      bytes from a disk to a socket.
+    </p>
+    <p>
+      By dropping down to <code>syscall.RawConn</code> to natively invoke <code>sendfile(2)</code>, we get C-level
+      efficiency exactly where it matters, the hot path, while keeping Go's rapid iteration and world-class concurrency
+      everywhere else.
+    </p>
+
+  </article>
+</Layout>

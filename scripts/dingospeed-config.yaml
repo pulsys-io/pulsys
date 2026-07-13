@@ -1,0 +1,80 @@
+server:
+    mode: release
+    host: 127.0.0.1
+    port: 18686
+    pprof: false
+    pprofPort: 6062
+    metrics: false
+    online: true
+    repos: ./repos
+    hfNetLoc: 127.0.0.1:18484
+    bpHfNetLoc: 127.0.0.1:18484
+    hfScheme: http
+
+scheduler:
+    mode: standalone
+    addr: 127.0.0.1:19091
+    strategy:
+        minimumFileSize: 0
+        syncProcessInterval: 100
+    discovery:
+        instanceId: hd-01
+        host: 127.0.0.1
+        port: 18686
+        heartbeatPeriod: 5
+    publicDomain: http://127.0.0.1:18686
+    linkDomain: http://127.0.0.1:18686
+
+download:
+    blockSize: 8388608
+    reqTimeout: 0
+    respChunkSize: 8192
+    respChanSize: 30
+    remoteFileBufferSize: 8388608
+    remoteFileRangeSize: 0
+    remoteFileRangeWaitTime: 0
+    goroutineMaxNumPerFile: 8
+
+cache:
+    defaultExpiration: 30
+    cleanupInterval: 60
+    readBlock:
+        enabled: false
+        collectTimePeriod: 5
+        prefetchMemoryUsedThreshold: 90
+        prefetchBlocks: 16
+        prefetchBlockTTL: 30
+    mountModelDir: /tmp/dingospeed-mount
+
+retry:
+    delay: 1
+    attempts: 3
+
+log:
+    maxSize: 20
+    maxBackups: 10
+    maxAge: 90
+
+tokenBucketLimit:
+    handlerCapacity: 50
+
+diskClean:
+    enabled: false
+    cacheSizeLimit: 41781441855488
+    cacheCleanStrategy: "LRU"
+    collectTimePeriod: 1
+
+dynamicProxy:
+    enabled: false
+    httpProxy: ""
+    httpProxyConnTest: false
+    httpProxyName: ""
+    timePeriod: 60
+    maxContinuousFails: 5
+    webhook: ""
+
+modelscope:
+    officialBaseURL: https://www.modelscope.cn
+    chunkSize: 8388608
+    maxRetry: 5
+    retryDelay: 3

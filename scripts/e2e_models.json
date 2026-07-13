@@ -1,0 +1,24 @@
+{
+  "jobs": [
+    {
+      "id": "tiny-gpt2",
+      "tier": "smoke",
+      "repo": "hf-internal-testing/tiny-random-gpt2",
+      "notes": "Small public test repo"
+    },
+    {
+      "id": "gpt2-config",
+      "tier": "smoke",
+      "repo": "openai-community/gpt2",
+      "include": "config.json",
+      "notes": "Single small file"
+    },
+    {
+      "id": "large-placeholder",
+      "tier": "large",
+      "repo": "openai-community/gpt2",
+      "include": "*.safetensors",
+      "notes": "Run manually: --tier large"
+    }
+  ]
+}

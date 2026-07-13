@@ -1,0 +1,15 @@
+{
+  "instance_type": "c7i.12xlarge",
+  "vcpu": 48,
+  "kernel": "6.1.174-217.345.amzn2023.x86_64",
+  "variant": "saturate-iouring",
+  "peak_rps": 1415369,
+  "peak_rps_millions": 1.42,
+  "peak_rps_payload": "4k",
+  "peak_gbps": 792.56,
+  "peak_gb_per_s": 99.07,
+  "peak_gbps_payload": "16m",
+  "duration_per_cell": "30s",
+  "git_commit": "4eee7d8",
+  "generated_utc": "2026-06-13T05:02:34Z"
+}
