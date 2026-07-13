@@ -80,7 +80,7 @@ type Config struct {
 	// When false, metadata always refreshes upstream for repo freshness.
 	Offline bool
 
-	// StrictOffline rejects upstream on cache miss with 504 (airgap /
+	// StrictOffline rejects upstream on cache miss with 504 (cached-only /
 	// bench mode).  When false, cache misses pass through to upstream.
 	StrictOffline bool
 
@@ -178,7 +178,7 @@ func ParseFlags(fs *flag.FlagSet, args []string) (*Config, error) {
 	fs.BoolVar(&cfg.IoUring, "iouring", false, "Linux only (experimental): use io_uring linked WRITE+SPLICE SQEs instead of cork+sendfile; requires kernel >= 6.1; falls back transparently if unavailable")
 	fs.IntVar(&cfg.Listeners, "listeners", cfg.Listeners, "number of SO_REUSEPORT listeners on -listen (1 disables REUSEPORT); set to GOMAXPROCS for high-RPS workloads on multi-core hosts")
 	fs.BoolVar(&cfg.Offline, "offline", true, "serve cached metadata on GET/HEAD when present (default on). When false, metadata always refreshes upstream; artifact bodies remain cache-first")
-	fs.BoolVar(&cfg.StrictOffline, "strict-offline", false, "on cache miss return 504 instead of fetching upstream (airgap / bench mode; requires a fully warmed cache)")
+	fs.BoolVar(&cfg.StrictOffline, "strict-offline", false, "on cache miss return 504 instead of fetching upstream (cached-only / bench mode; requires a fully warmed cache)")
 	fs.Int64Var(&cfg.CacheMaxBytes, "cache-max-bytes", 0, "maximum total on-disk cache bytes; 0 leaves the cache unbounded. Positive values enforce a hard quota and reject new cache fills with 507 until models are purged or the limit is raised.")
 	fs.Int64Var(&cfg.LFSMaxBytes, "lfs-max-bytes", 0, "maximum body size (bytes) accepted by PUT /lfs-storage/{oid}; 0 uses the package default (200 GiB).  Phase 5 WSTG-BUSL-09 disk-DoS guard.")
 

@@ -72,8 +72,8 @@ export const marketing = {
       body: 'Queue a repo in the console. A background job fills the cache so the fleet starts warm.',
     },
     {
-      title: 'Offline after fill',
-      body: 'Strict-offline mode serves cached artifacts with zero upstream egress.',
+      title: 'Cached-only mode',
+      body: 'Strict-offline mode serves cached artifacts and returns 504 on a miss instead of contacting Hugging Face.',
     },
   ] as const,
 
@@ -87,8 +87,8 @@ export const marketing = {
       body: 'Idle accelerators waiting on egress are the real price of a cold pull. Warm hits stream from local disk.',
     },
     {
-      title: 'Air-gapped networks',
-      body: 'Pre-warm where there is connectivity, then serve the isolated network with no upstream dependency.',
+      title: 'Restricted egress',
+      body: 'Only Pulsys needs access to Hugging Face. Clients connect to Pulsys, and the upstream token stays on the proxy.',
     },
   ] as const,
 
