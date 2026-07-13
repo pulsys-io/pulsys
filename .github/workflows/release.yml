@@ -8,6 +8,10 @@ name: release
 on:
   push:
     tags: ['v*']
+  # Tags pushed by release-please use GITHUB_TOKEN, which never triggers
+  # other workflows; run this manually against the tag ref after a release
+  # PR merges (gh workflow run release.yml --ref vX.Y.Z).
+  workflow_dispatch:
 
 permissions:
   contents: read

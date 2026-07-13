@@ -18,23 +18,25 @@ warm path.
 
 ---
 
-Pull the same model twice (CI fleet, training cluster, air-gapped network) and
-you re-download the same bytes. Pulsys caches the Hugging Face wire protocol to
-local disk: the first request streams from `huggingface.co`; every request after
-is served from disk with no upstream egress. Warm hits use io_uring/sendfile on
-Linux 6.1+ and `sendfile` + `sf_hdtr` on macOS.
+Pulsys is an authenticated pull-through cache for the Hugging Face Hub. It sits
+between your machines and `huggingface.co`: the first download of a model fills
+a local disk cache, and every download after that is served from disk with no
+upstream egress. Existing clients work unchanged — `huggingface_hub`,
+`transformers`, and the `hf` CLI all route through it via `HF_ENDPOINT`.
 
+Warm hits skip userspace copies entirely, using io_uring on Linux 6.1+ and
+`sendfile` on macOS.
 <!-- bench:headline:start -->
 On a 48-vCPU `c7i.12xlarge` (io_uring) it sustains **1.36M req/s** at 4 KiB and
 **90 GB/s** loopback at 16 MiB.
 <!-- bench:headline:end -->
-Numbers, receipts, and reproduction (on a stock `c7i.12xlarge` by default):
+Numbers, receipts, and reproduction:
 [`docs/benchmarks.md`](docs/benchmarks.md).
 
-Pulsys is authenticated by default (no open mode): it requires a Postgres admin
-plane that issues per-request API keys, and its own read-only Hugging Face token
-for upstream reads. It never forwards client credentials to Hugging Face.
-Details: [`docs/security.md`](docs/security.md#credential-model).
+There is no unauthenticated mode. Clients authenticate to Pulsys with API keys
+issued by its Postgres-backed admin plane, and Pulsys authenticates to Hugging
+Face with its own read-only token. Client credentials are never forwarded
+upstream. Details: [`docs/security.md`](docs/security.md#credential-model).
 
 ## Clone
 
