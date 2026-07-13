@@ -65,13 +65,13 @@ sboms:
     artifacts: archive
 
 # Keyless cosign signatures over the checksums file and SBOMs.
+# cosign v3+ writes a single sigstore bundle (signature + certificate).
 signs:
   - cmd: cosign
-    certificate: "${artifact}.pem"
+    signature: "${artifact}.sigstore.json"
     args:
       - sign-blob
-      - "--output-certificate=${certificate}"
-      - "--output-signature=${signature}"
+      - "--bundle=${signature}"
       - "${artifact}"
       - "--yes"
     artifacts: checksum
@@ -139,8 +139,7 @@ release:
 
     ```
     cosign verify-blob \
-      --certificate checksums.txt.pem \
-      --signature checksums.txt.sig \
+      --bundle checksums.txt.sigstore.json \
       --certificate-identity-regexp 'https://github.com/pulsys-io/pulsys/.*' \
       --certificate-oidc-issuer https://token.actions.githubusercontent.com \
       checksums.txt
