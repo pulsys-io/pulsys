@@ -7,6 +7,8 @@
 An authenticated pull-through cache for Hugging Face with a sendfile/io_uring
 warm path.
 
+[pulsys.io](https://pulsys.io) · [Docs](https://pulsys.io/docs) · [Blog](https://pulsys.io/blog)
+
 [![CI](https://github.com/pulsys-io/pulsys/actions/workflows/linux.yml/badge.svg)](https://github.com/pulsys-io/pulsys/actions/workflows/linux.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/pulsys-io/pulsys.svg)](https://pkg.go.dev/github.com/pulsys-io/pulsys)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/pulsys-io/pulsys/badge)](https://securityscorecards.dev/viewer/?uri=github.com/pulsys-io/pulsys)
@@ -136,7 +138,8 @@ vulnerability, see [SECURITY.md](SECURITY.md).
 
 ## Documentation
 
-Full index: [`docs/`](docs/README.md). Common entry points:
+Rendered docs: [pulsys.io/docs](https://pulsys.io/docs). Full index:
+[`docs/`](docs/README.md). Common entry points:
 
 | Topic | Doc |
 |---|---|

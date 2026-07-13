@@ -362,6 +362,10 @@ func avgMpstatBusy(path string) (float64, bool) {
 }
 
 func metaSubtitle(meta metaInfo, agg *saturateAgg) string {
+	return metaSubtitleStat(meta, agg, "bar=median · whisker=min/max")
+}
+
+func metaSubtitleStat(meta metaInfo, agg *saturateAgg, stat string) string {
 	ncpu := meta.vCPU
 	if ncpu == "" {
 		ncpu = os.Getenv("SATURATE_VCPU")
@@ -371,35 +375,40 @@ func metaSubtitle(meta metaInfo, agg *saturateAgg) string {
 	}
 	inst := os.Getenv("EC2_INSTANCE_TYPE")
 	if inst != "" {
-		return fmt.Sprintf("Linux EC2 %s · loopback · wrk c=%d · %s vCPU · bar=median · whisker=min/max",
-			inst, agg.concurrency, ncpu)
+		return fmt.Sprintf("Linux EC2 %s · loopback · wrk c=%d · %s vCPU · %s",
+			inst, agg.concurrency, ncpu, stat)
 	}
-	return fmt.Sprintf("loopback · wrk c=%d · %s vCPU · bar=median · whisker=min/max",
-		agg.concurrency, ncpu)
+	return fmt.Sprintf("loopback · wrk c=%d · %s vCPU · %s",
+		agg.concurrency, ncpu, stat)
 }
 
+// The rate charts report the PEAK round per cell, matching the
+// convention of headline.json / report.md ("Peak: ... Gbps") and the
+// site's stat tiles: a saturation bench measures capability, and noise
+// on a loaded box only ever subtracts.  The whisker still shows the
+// min/max spread across rounds.
 func renderSaturateRPS(agg *saturateAgg, meta metaInfo, path string) {
-	yMax := peakMedian(agg, func(c *cell) float64 { return med(c.rps) })
+	yMax := peakMedian(agg, func(c *cell) float64 { _, hi := minMax(c.rps); return hi })
 	renderSingleMetric(agg, meta, path,
 		"Saturate request rate, req/s",
-		metaSubtitle(meta, agg),
+		metaSubtitleStat(meta, agg, "bar=peak round · whisker=min/max"),
 		"Higher is better.",
 		yMax,
-		func(c *cell) float64 { return med(c.rps) },
+		func(c *cell) float64 { _, hi := minMax(c.rps); return hi },
 		func(c *cell) (float64, float64) { return minMax(c.rps) },
 		"req/s",
-		formatRPSAxis,
+		formatRPSLabel,
 	)
 }
 
 func renderSaturateThroughput(agg *saturateAgg, meta metaInfo, path string) {
-	yMax := peakMedian(agg, func(c *cell) float64 { return med(c.bps) / 1e9 })
+	yMax := peakMedian(agg, func(c *cell) float64 { _, hi := minMax(c.bps); return hi / 1e9 })
 	renderSingleMetric(agg, meta, path,
 		"Saturate throughput, GB/s",
-		metaSubtitle(meta, agg),
+		metaSubtitleStat(meta, agg, "bar=peak round · whisker=min/max"),
 		"Higher is better.  wrk Transfer/sec; large payloads may show high GB/s on loopback.",
 		yMax,
-		func(c *cell) float64 { return med(c.bps) / 1e9 },
+		func(c *cell) float64 { _, hi := minMax(c.bps); return hi / 1e9 },
 		func(c *cell) (float64, float64) {
 			lo, hi := minMax(c.bps)
 			return lo / 1e9, hi / 1e9
@@ -746,6 +755,15 @@ func payloadLabel(id string) string {
 	default:
 		return id
 	}
+}
+
+// formatRPSLabel keeps two significant decimals in the millions range
+// so the bar label matches the headline stat exactly (1.36M, not 1.4M).
+func formatRPSLabel(v float64) string {
+	if v >= 1e6 {
+		return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.2f", v/1e6), "0"), ".") + "M"
+	}
+	return formatRPSAxis(v)
 }
 
 func formatRPSAxis(v float64) string {

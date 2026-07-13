@@ -5,7 +5,7 @@ export const repoHref =
 const base = import.meta.env.BASE_URL;
 
 /** On-site Starlight docs (respects PUBLIC_BASE_PATH, e.g. /pulsys/docs). */
-export const docsHref = `${base}docs`.replace(/\/?$/, '/docs');
+export const docsHref = base.replace(/\/?$/, '/docs');
 export const getStartedHref = docsHref;
 
 export const githubEditDocsBase = `${repoHref}/edit/main/docs/`;

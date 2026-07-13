@@ -106,21 +106,15 @@ pulsys_sendfile_fused_calls +93,467    # 1.000000 sendfile/hit, 0 EAGAIN retries
       <figcaption>EC2 saturation — GB/s by payload.</figcaption>
     </figure>
     <p>
-      The end-to-end effect is what a fleet actually feels: a real <code>hf download</code>
-      against a warm cache versus a direct pull.
-    </p>
-    <figure class="post-figure">
-      <img
-        src={`${base}results/darwin/e2e.svg`}
-        alt="End-to-end hf download wallclock, direct versus warm cache"
-        loading="lazy"
-      />
-      <figcaption>Real <code>hf download</code> wallclock, direct vs warm (Darwin harness).</figcaption>
-    </figure>
-    <p>
-      Head-to-head against DingoSpeed on identical bytes and URLs, Pulsys won 32 of 35 warm
-      throughput cells (3 tied) and all 35 p99 cells, while holding peak RSS at 12&nbsp;MB against
-      853&nbsp;MB under a sustained 64&nbsp;MiB load.
+      The end-to-end effect is what a fleet actually feels. On the same instance, a real
+      <code>hf download</code> of Qwen2.5-7B-Instruct — 15.2&nbsp;GB through the official
+      <code>hf</code> CLI with <code>hf_transfer</code> — completes in 22&nbsp;s against the warm
+      cache: <strong>664&nbsp;MiB/s</strong> sustained to a single client that is writing every
+      byte to disk, with zero upstream egress. That run is what the terminal demo on the landing
+      page replays; the rate in it comes from the harness CSV, not a copywriter. The gap between
+      664&nbsp;MiB/s for one downloader and 90&nbsp;GB/s aggregate is the point of the saturation
+      charts above: one client is bounded by its own disk and HTTP client, while the cache has
+      two orders of magnitude of headroom left to serve the rest of the fleet at the same time.
     </p>
 
     <h2>Run the benchmarks yourself</h2>
@@ -129,7 +123,7 @@ pulsys_sendfile_fused_calls +93,467    # 1.000000 sendfile/hit, 0 EAGAIN retries
       harnesses that produced it.
     </p>
     <p><strong>Local comparison</strong> (Darwin or Linux), same bytes and URLs across proxies:</p>
-    <pre class="code-block"><code>scripts/bench_compare.sh            # warm-hit throughput vs DingoSpeed / Caddy / nginx
+    <pre class="code-block"><code>scripts/bench_compare.sh            # warm-hit throughput vs other local proxies
 go run scripts/render_bench_svg.go  # renders the comparison chart</code></pre>
     <p>
       <strong>Any Linux host</strong> (kernel ≥ 6.1) can measure the io_uring path directly —
