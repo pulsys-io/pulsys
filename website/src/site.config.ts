@@ -26,15 +26,13 @@ export const legalEmail = 'privacy@pulsys.io';
 
 /** Landing-page copy. Every line is shipped behavior or a published measurement. */
 export const marketing = {
-  categoryBadge: 'Open source · Apache-2.0',
-  /** Outcome + mechanism. Clarity over cleverness. */
-  heroTitle: 'Pull a model once. Serve the fleet from local disk.',
+  heroTitle: 'A local cache for Hugging Face.',
   heroLead:
-    'Pulsys is an authenticated pull-through cache for Hugging Face. Point HF_ENDPOINT at it: the first request fills local disk; every later request is a warm hit. That is CI and GPU time you stop spending on the public internet.',
+    'Self-hosted, authenticated, and compatible with existing Hugging Face clients.',
   pageDescription:
     'Authenticated Hugging Face pull-through cache. Warm hits from local disk. Published EC2 benchmarks. Apache-2.0.',
-  primaryCta: 'Read the docs',
-  secondaryCta: 'View on GitHub',
+  primaryCta: 'Get started',
+  secondaryCta: 'GitHub',
   finalCtaHeadline: 'Deploy with Docker Compose or Helm',
   finalPrimaryCta: 'Read the docs',
   finalSecondaryCta: 'Star on GitHub',
