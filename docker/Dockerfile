@@ -4,7 +4,7 @@
 #   pulsys  HF cache proxy + admin API listener
 #   console   nginx + static admin SPA
 
-FROM golang:1.25-bookworm@sha256:a9c020ee3d1508c7be5435c262434e3d3fc1d0e76a11afeb9ddae7d60bc86aa4 AS go-builder
+FROM golang:1.26-bookworm@sha256:18aedc16aa19b3fd7ded7245fc14b109e054d65d22ed53c355c899582bbb2113 AS go-builder
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
@@ -12,7 +12,7 @@ COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/pulsys ./cmd/pulsys && \
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/pulsys-db ./cmd/pulsys-db
 
-FROM node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5 AS ui-builder
+FROM node:26-bookworm@sha256:e2cd0ff87e2597f66fab50710216e2a08ad2f09bae0ca78f6b31e8c5f1a811a0 AS ui-builder
 WORKDIR /app
 COPY admin-ui/package.json admin-ui/package-lock.json ./
 RUN npm ci
@@ -20,14 +20,14 @@ COPY admin-ui/ .
 ENV PULSYS_STATIC_EXPORT=1
 RUN npm run build
 
-FROM alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d AS init
+FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS init
 RUN apk add --no-cache ca-certificates curl
 COPY --from=go-builder /out/pulsys-db /usr/local/bin/pulsys-db
 COPY docker/scripts/init.sh /usr/local/bin/pulsys-init
 RUN chmod +x /usr/local/bin/pulsys-init
 ENTRYPOINT ["/usr/local/bin/pulsys-init"]
 
-FROM alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d AS pulsys
+FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS pulsys
 RUN apk add --no-cache ca-certificates wget && \
     adduser -D -h /var/lib/pulsys pulsys && \
     mkdir -p /var/lib/pulsys/cache && \
@@ -38,7 +38,7 @@ RUN chmod +x /usr/local/bin/pulsys-pulsys
 USER pulsys
 ENTRYPOINT ["/usr/local/bin/pulsys-pulsys"]
 
-FROM nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 AS console
+FROM nginx:1.31-alpine@sha256:54f2a904c251d5a34adf545a72d32515a15e08418dae0266e23be2e18c66fefa AS console
 RUN rm -f /etc/nginx/conf.d/default.conf
 COPY docker/nginx/pulsys.conf /etc/nginx/conf.d/pulsys.conf
 COPY docker/nginx/pulsys_proxy_headers.inc /etc/nginx/conf.d/pulsys_proxy_headers.inc
