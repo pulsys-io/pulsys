@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/pulsys-io/pulsys/compare/v0.1.3...v0.1.4) (2026-07-14)
+
+
+### Documentation
+
+* install Helm chart from git; keep GHCR images ([8cc8850](https://github.com/pulsys-io/pulsys/commit/8cc8850419737ed7b575ae0e8c307090ab29dc72))
+
 ## [0.1.3](https://github.com/pulsys-io/pulsys/compare/v0.1.2...v0.1.3) (2026-07-14)
 
 
