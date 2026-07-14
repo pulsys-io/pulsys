@@ -21,6 +21,8 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/pulsys-io/pulsys/internal/cache"
@@ -36,6 +38,13 @@ func main() {
 	urlPrefix := flag.String("url-prefix", "/", "URL prefix to seed each payload under (e.g. /models/bench/bench/resolve/main/ for HF-shaped URLs)")
 	pprofAddr := flag.String("pprof", "", "optional pprof http listen address (e.g. 127.0.0.1:18081); empty to disable")
 	flag.Parse()
+
+	if v := os.Getenv("PULSYS_MEMPROFILE_RATE"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			runtime.MemProfileRate = n
+			log.Printf("MemProfileRate=%d", n)
+		}
+	}
 
 	if *pprofAddr != "" {
 		go func() {

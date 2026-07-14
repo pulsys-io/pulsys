@@ -116,6 +116,9 @@ Validate required values and fail fast with actionable messages.
 {{- if and (not .Values.postgres.dsn) (not .Values.postgres.existingSecret) (not .Values.postgres.host) -}}
 {{- fail "admin.enabled=true requires an external Postgres: set one of postgres.dsn, postgres.existingSecret, or postgres.host" -}}
 {{- end -}}
+{{- if and (not .Values.postgres.dsn) (not .Values.postgres.existingSecret) .Values.postgres.host (not .Values.postgres.password) -}}
+{{- fail "postgres.host is set but postgres.password is empty: set postgres.password, or use postgres.existingSecret / postgres.dsn (preferred for production)" -}}
+{{- end -}}
 {{- if .Values.oidc.enabled -}}
 {{- if not .Values.oidc.issuer -}}
 {{- fail "oidc.enabled=true requires oidc.issuer" -}}

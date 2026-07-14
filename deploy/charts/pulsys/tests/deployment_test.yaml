@@ -24,6 +24,7 @@ tests:
       proxy.publicBaseURL: https://hf.example.com
       admin.enabled: true
       postgres.host: pg
+      postgres.password: test
     asserts:
       - failedTemplate:
           errorMessage: "admin.imports.hfTokenSecret is required: name an existing Secret (key 'token') holding Pulsys's read-only Hugging Face token. Pulsys uses it for all upstream reads and refuses to start without it."
@@ -38,12 +39,24 @@ tests:
       - failedTemplate:
           errorMessage: "admin.enabled=true requires an external Postgres: set one of postgres.dsn, postgres.existingSecret, or postgres.host"
 
+  - it: rejects postgres.host with an empty password
+    template: templates/deployment.yaml
+    set:
+      proxy.publicBaseURL: https://hf.example.com
+      admin.enabled: true
+      admin.imports.hfTokenSecret: pulsys-hf
+      postgres.host: pg.internal
+    asserts:
+      - failedTemplate:
+          errorMessage: "postgres.host is set but postgres.password is empty: set postgres.password, or use postgres.existingSecret / postgres.dsn (preferred for production)"
+
   - it: renders a single-replica managed Deployment
     template: templates/deployment.yaml
     set:
       proxy.publicBaseURL: https://hf.example.com
       admin.enabled: true
       postgres.host: pg
+      postgres.password: test
       admin.imports.hfTokenSecret: pulsys-hf
     documentIndex: 0
     asserts:
@@ -65,6 +78,7 @@ tests:
       proxy.publicBaseURL: https://hf.example.com
       admin.enabled: true
       postgres.host: pg
+      postgres.password: test
       admin.imports.hfTokenSecret: pulsys-hf
     documentIndex: 0
     asserts:
@@ -96,6 +110,7 @@ tests:
       proxy.publicBaseURL: https://hf.example.com
       admin.enabled: true
       postgres.host: pg
+      postgres.password: test
       admin.imports.hfTokenSecret: pulsys-hf
       oidc.enabled: true
       oidc.issuer: https://idp.example.com/realms/pulsys
@@ -115,6 +130,7 @@ tests:
       proxy.publicBaseURL: https://hf.example.com
       admin.enabled: true
       postgres.host: pg
+      postgres.password: test
       admin.imports.hfTokenSecret: pulsys-hf
     documentIndex: 0
     asserts:
@@ -137,6 +153,7 @@ tests:
       proxy.publicBaseURL: https://hf.example.com
       admin.enabled: true
       postgres.host: pg
+      postgres.password: test
       admin.imports.hfTokenSecret: pulsys-hf
       proxy.cacheMaxBytes: 1073741824
       proxy.extraArgs:
@@ -161,6 +178,7 @@ tests:
       proxy.publicBaseURL: https://hf.example.com
       admin.enabled: true
       postgres.host: pg
+      postgres.password: test
       admin.imports.hfTokenSecret: pulsys-hf
     asserts:
       - equal:
@@ -180,6 +198,7 @@ tests:
       proxy.publicBaseURL: https://hf.example.com
       admin.enabled: true
       postgres.host: pg
+      postgres.password: test
       admin.imports.hfTokenSecret: pulsys-hf
       admin.init.enabled: false
     asserts:
@@ -193,6 +212,7 @@ tests:
       proxy.publicBaseURL: https://hf.example.com
       admin.enabled: true
       postgres.host: pg
+      postgres.password: test
       admin.imports.hfTokenSecret: pulsys-hf
       oidc.enabled: true
       oidc.issuer: https://idp.example.com/realms/pulsys
@@ -214,6 +234,7 @@ tests:
       proxy.publicBaseURL: https://hf.example.com
       admin.enabled: true
       postgres.host: pg
+      postgres.password: test
       admin.imports.hfTokenSecret: pulsys-hf
     asserts:
       - matchSnapshot: {}
