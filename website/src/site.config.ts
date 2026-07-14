@@ -13,8 +13,6 @@ export const discussionsHref = `${repoHref}/discussions`;
 export const issuesHref = `${repoHref}/issues`;
 export const releasesHref = `${repoHref}/releases`;
 export const ghcrHref = `${repoHref}/pkgs/container/pulsys`;
-/** "owner/name" used by the live GitHub-stars button. */
-export const repoSlug = repoHref.replace(/^https?:\/\/github\.com\//, '');
 
 /** Community contact for an OSS project routes to Discussions, not sales. */
 export const contactHref = discussionsHref;

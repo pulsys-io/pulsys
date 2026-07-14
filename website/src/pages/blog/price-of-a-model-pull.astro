@@ -15,6 +15,8 @@ const rpsLabel =
   title="The Price of a Model Pull: Benchmarking a Cache at the Syscall Floor"
   description="What repeated model downloads cost a GPU fleet, and how far a pull-through cache can go when the warm path is engineered down to one kernel boundary crossing."
   current="blog"
+  ogType="article"
+  publishedTime={publishedDate}
 >
   <article class="wrap legal">
     <h1>The Price of a Model Pull: Benchmarking a Cache at the Syscall Floor</h1>
@@ -93,6 +95,8 @@ pulsys_sendfile_fused_calls +93,467    # 1.000000 sendfile/hit, 0 EAGAIN retries
       <img
         src={`${base}results/ec2/rps.svg`}
         alt="Request rate by payload size on the EC2 reference run"
+        width="820"
+        height="440"
         loading="lazy"
       />
       <figcaption>EC2 saturation — req/s by payload.</figcaption>
@@ -101,6 +105,8 @@ pulsys_sendfile_fused_calls +93,467    # 1.000000 sendfile/hit, 0 EAGAIN retries
       <img
         src={`${base}results/ec2/throughput.svg`}
         alt="Throughput by payload size on the EC2 reference run"
+        width="820"
+        height="440"
         loading="lazy"
       />
       <figcaption>EC2 saturation — GB/s by payload.</figcaption>

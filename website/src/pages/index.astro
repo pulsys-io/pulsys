@@ -3,7 +3,6 @@ import Layout from '../layouts/Layout.astro';
 import ArchDiagram from '../components/ArchDiagram.astro';
 import { repoHref, docsHref, getStartedHref, brandName, marketing } from '../site.config';
 import { headline } from '../generated/headline';
-import 'asciinema-player/dist/bundle/asciinema-player.css';
 
 const { cliBinName, demoModelId } = marketing;
 const base = import.meta.env.BASE_URL;
@@ -52,6 +51,14 @@ $ export HF_TOKEN=pulsys_...
 $ {cliBinName} download {demoModelId}
 Resolving data files...
 Download complete (warm)  664 MiB/s  (5.57 Gb/s)</code></pre>
+            <button
+              id="asciinema-play"
+              class="lp-terminal__play"
+              type="button"
+              aria-controls="asciinema-hf-demo"
+            >
+              Play demo
+            </button>
           </div>
         </div>
       </div>
@@ -94,11 +101,23 @@ Download complete (warm)  664 MiB/s  (5.57 Gb/s)</code></pre>
 
       <div class="lp-charts">
         <figure class="lp-chart">
-          <img src={`${base}results/ec2/rps.svg`} alt="Request rate by payload (EC2 reference run)" loading="lazy" />
+          <img
+            src={`${base}results/ec2/rps.svg`}
+            alt="Request rate by payload (EC2 reference run)"
+            width="820"
+            height="440"
+            loading="lazy"
+          />
           <figcaption>EC2 saturation · req/s by payload</figcaption>
         </figure>
         <figure class="lp-chart">
-          <img src={`${base}results/ec2/throughput.svg`} alt="Throughput by payload (EC2 reference run)" loading="lazy" />
+          <img
+            src={`${base}results/ec2/throughput.svg`}
+            alt="Throughput by payload (EC2 reference run)"
+            width="820"
+            height="440"
+            loading="lazy"
+          />
           <figcaption>EC2 saturation · GB/s by payload</figcaption>
         </figure>
       </div>
@@ -238,25 +257,45 @@ export HF_TOKEN=pulsys_...
   </div>
 
   <script>
-    import { create } from 'asciinema-player';
+    import playerStylesUrl from 'asciinema-player/dist/bundle/asciinema-player.css?url';
 
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    function mountTerminal() {
+    const play = document.getElementById('asciinema-play') as HTMLButtonElement | null;
+    play?.addEventListener('click', async () => {
       const el = document.getElementById('asciinema-hf-demo');
-      if (!el || reduceMotion) return;
-      create(`${import.meta.env.BASE_URL}demos/hf-warm-demo.cast`, el, {
-        fit: 'width',
-        rows: 8,
-        cols: 52,
-        theme: 'dracula',
-        loop: true,
-        autoPlay: true,
-        speed: 1.0,
-      });
-    }
+      const terminal = el?.closest('.lp-terminal');
+      if (!el || !terminal || play.disabled) return;
 
-    mountTerminal();
+      play.disabled = true;
+      play.textContent = 'Loading…';
+
+      try {
+        let styles = document.querySelector<HTMLLinkElement>('link[data-asciinema-styles]');
+        if (!styles) {
+          styles = document.createElement('link');
+          styles.rel = 'stylesheet';
+          styles.href = playerStylesUrl;
+          styles.dataset.asciinemaStyles = '';
+          document.head.append(styles);
+          await new Promise<void>((resolve, reject) => {
+            styles!.addEventListener('load', () => resolve(), { once: true });
+            styles!.addEventListener('error', () => reject(), { once: true });
+          });
+        }
+        const { create } = await import('asciinema-player');
+        terminal.classList.add('lp-terminal--playing');
+        create(`${import.meta.env.BASE_URL}demos/hf-warm-demo.cast`, el, {
+          fit: 'width',
+          rows: 8,
+          cols: 52,
+          theme: 'dracula',
+          loop: true,
+          autoPlay: true,
+          speed: 1.0,
+        });
+      } catch {
+        play.textContent = 'Demo unavailable';
+      }
+    });
   </script>
 </Layout>
 

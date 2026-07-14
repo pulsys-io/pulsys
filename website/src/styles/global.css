@@ -293,8 +293,9 @@ main {
     0 20px 50px -28px rgba(0, 0, 0, 0.7);
 }
 
-/* asciinema player (hero): fit container, avoid horizontal clip */
+/* The transcript is the zero-JS default; the player loads only on request. */
 .asciinema-hero {
+  display: none;
   width: 100%;
   max-width: 100%;
   border-radius: var(--radius-sm);
@@ -313,7 +314,7 @@ main {
 }
 
 .asciinema-static-fallback {
-  display: none;
+  display: block;
   margin: var(--space-4) 0 0;
   padding: var(--space-4);
   border-radius: var(--radius-sm);
@@ -336,12 +337,8 @@ main {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .asciinema-hero {
-    display: none !important;
-  }
-
-  .asciinema-static-fallback {
-    display: block;
+  .lp-terminal__play {
+    display: none;
   }
 }
 
@@ -511,8 +508,8 @@ html.theme-dark {
   --bg: #050507;
   --bg-elevated: #0c0e12;
   --bg-subtle: #12151b;
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-brand: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --text-tertiary: #8a97a8;
+  --font-brand: var(--font-mono);
 }
 
 .brand-mark {
@@ -667,18 +664,12 @@ html.theme-dark body {
   margin-top: 0;
 }
 
-/* Live GitHub-stars button. */
 .gh-stars {
   gap: var(--space-2);
 }
 
-.gh-stars__count {
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  padding-left: var(--space-1, 0.25rem);
-}
-
 .lp-terminal {
+  position: relative;
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--separator) 90%, var(--accent));
   background: #07080b;
@@ -726,6 +717,39 @@ html.theme-dark body {
 .lp-terminal .asciinema-hero {
   border: none;
   border-radius: 0;
+}
+
+.lp-terminal--playing .asciinema-hero {
+  display: block;
+}
+
+.lp-terminal--playing .asciinema-static-fallback,
+.lp-terminal--playing .lp-terminal__play {
+  display: none;
+}
+
+.lp-terminal__play {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  min-height: 2.25rem;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--separator));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
+  color: var(--text);
+  font: 600 0.8rem/1 var(--font-sans);
+  cursor: pointer;
+}
+
+.lp-terminal__play:hover {
+  border-color: var(--accent);
+  background: var(--bg-elevated);
+}
+
+.lp-terminal__play:disabled {
+  cursor: wait;
+  color: var(--text-secondary);
 }
 
 .lp-arch {

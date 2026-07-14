@@ -1,12 +1,11 @@
 ---
-import '../styles/global.css';
+import globalStyles from '../styles/global.css?inline';
 import {
   brandName,
   companyLegalName,
   contactHref,
   docsHref,
   repoHref,
-  repoSlug,
   plausibleDomain,
   plausibleScriptSrc,
 } from '../site.config';
@@ -17,6 +16,8 @@ interface Props {
   current?: 'home' | 'blog' | 'privacy';
   /** Marketing home: force dark palette (Linear / Vercel / Stripe pattern). */
   marketing?: boolean;
+  ogType?: 'website' | 'article';
+  publishedTime?: string;
 }
 
 const {
@@ -24,10 +25,26 @@ const {
   description = 'Fast, reliable model and dataset downloads, cached for your team.',
   current,
   marketing = false,
+  ogType = 'website',
+  publishedTime,
 } = Astro.props;
 const year = new Date().getFullYear();
 const base = import.meta.env.BASE_URL;
 const ogImage = Astro.site ? new URL(`${base}og.png`, Astro.site).href : `${base}og.png`;
+const canonicalUrl = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : Astro.url.href;
+const plausibleOrigin = plausibleDomain ? new URL(plausibleScriptSrc).origin : '';
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  `script-src 'self' 'wasm-unsafe-eval'${plausibleOrigin ? ` ${plausibleOrigin}` : ''}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  `connect-src 'self'${plausibleOrigin ? ` ${plausibleOrigin}` : ''}`,
+  "form-action 'self'",
+  'upgrade-insecure-requests',
+].join('; ');
 ---
 
 <!doctype html>
@@ -37,31 +54,24 @@ const ogImage = Astro.site ? new URL(`${base}og.png`, Astro.site).href : `${base
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#050507" />
+    <meta http-equiv="Content-Security-Policy" content={contentSecurityPolicy} />
     <title>{title}</title>
+    <link rel="canonical" href={canonicalUrl} />
     <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
     <link rel="icon" href={`${base}favicon-32.png`} type="image/png" sizes="32x32" />
     <link rel="icon" href={`${base}favicon-16.png`} type="image/png" sizes="16x16" />
     <link rel="apple-touch-icon" href={`${base}apple-touch-icon.png`} />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={ogType} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={ogImage} />
+    <meta property="og:url" content={canonicalUrl} />
+    {ogType === 'article' && publishedTime && <meta property="article:published_time" content={publishedTime} />}
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
-    {
-      marketing && (
-        <>
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-          <link
-            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap"
-            rel="stylesheet"
-          />
-        </>
-      )
-    }
+    <style is:inline set:html={globalStyles}></style>
     {
       plausibleDomain && (
         <script
@@ -107,12 +117,10 @@ const ogImage = Astro.site ? new URL(`${base}og.png`, Astro.site).href : `${base
                 href={repoHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                data-gh-stars={repoSlug}
                 aria-label="Star pulsys on GitHub"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>
                 <span>Star</span>
-                <span class="gh-stars__count" hidden></span>
               </a>
             </div>
           ) : (
@@ -146,24 +154,5 @@ const ogImage = Astro.site ? new URL(`${base}og.png`, Astro.site).href : `${base
         </p>
       </div>
     </footer>
-    <script is:inline>
-      // Live GitHub-stars button: fill the count from the public API, with a
-      // silent fallback to just "Star" if the request is rate-limited/offline.
-      (function () {
-        var el = document.querySelector('[data-gh-stars]');
-        if (!el) return;
-        var slug = el.getAttribute('data-gh-stars');
-        fetch('https://api.github.com/repos/' + slug, { headers: { Accept: 'application/vnd.github+json' } })
-          .then(function (r) { return r.ok ? r.json() : null; })
-          .then(function (d) {
-            if (!d || typeof d.stargazers_count !== 'number') return;
-            var n = d.stargazers_count;
-            var label = n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n);
-            var c = el.querySelector('.gh-stars__count');
-            if (c) { c.textContent = label; c.hidden = false; }
-          })
-          .catch(function () {});
-      })();
-    </script>
   </body>
 </html>

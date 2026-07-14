@@ -1,0 +1,43 @@
+# Pulsys
+
+> Pulsys is an open-source, authenticated pull-through cache for the Hugging Face Hub.
+
+Pulsys stores model artifacts on local disk and serves subsequent requests from
+the cache. Existing Hugging Face clients connect through `HF_ENDPOINT`.
+Upstream cache misses require a read-only Hugging Face token; clients
+authenticate to Pulsys with Pulsys API keys. The supported deployment is a
+single proxy replica backed by persistent disk and a Postgres admin plane.
+
+## Start here
+
+- [Project website](https://pulsys.io/): Product overview, measured performance, and quick start.
+- [README](https://raw.githubusercontent.com/pulsys-io/pulsys/main/README.md): Local setup, Kubernetes deployment, supported scope, and project status.
+- [Development guide](https://raw.githubusercontent.com/pulsys-io/pulsys/main/DEVELOPMENT.md): Build, run, test, and navigate the repository.
+
+## Operations
+
+- [Architecture](https://raw.githubusercontent.com/pulsys-io/pulsys/main/docs/architecture.md): Components, request flow, cache warming, storage, and deployment topology.
+- [Security](https://raw.githubusercontent.com/pulsys-io/pulsys/main/docs/security.md): Credential model, threat model, parser hardening, deployment hardening, and supply-chain posture.
+- [OIDC and SSO](https://raw.githubusercontent.com/pulsys-io/pulsys/main/docs/oidc.md): Keycloak, Amazon Cognito, and AWS IAM Identity Center setup.
+- [Benchmarks](https://raw.githubusercontent.com/pulsys-io/pulsys/main/docs/benchmarks.md): Methodology, results, limitations, and reproduction steps.
+- [Internals](https://raw.githubusercontent.com/pulsys-io/pulsys/main/docs/internals.md): io_uring, sendfile, Hugging Face protocol handling, and operating-system tuning.
+
+## Deployment and components
+
+- [Helm chart](https://raw.githubusercontent.com/pulsys-io/pulsys/main/deploy/charts/pulsys/README.md): Kubernetes values, examples, and production configuration.
+- [Admin console](https://raw.githubusercontent.com/pulsys-io/pulsys/main/admin-ui/README.md): Next.js administration interface.
+- [AWS benchmark infrastructure](https://raw.githubusercontent.com/pulsys-io/pulsys/main/infra/cdk/README.md): Packer, CDK, and SSM benchmark harness.
+- [Configuration source](https://github.com/pulsys-io/pulsys/blob/main/internal/config/config.go): Runtime flags and their `PULSYS_` environment variables.
+
+## Project
+
+- [Roadmap](https://raw.githubusercontent.com/pulsys-io/pulsys/main/ROADMAP.md): Planned work and explicit non-goals.
+- [Contributing](https://raw.githubusercontent.com/pulsys-io/pulsys/main/CONTRIBUTING.md): Development workflow, DCO, testing, and review requirements.
+- [Security policy](https://raw.githubusercontent.com/pulsys-io/pulsys/main/SECURITY.md): Supported versions and vulnerability reporting.
+- [License](https://raw.githubusercontent.com/pulsys-io/pulsys/main/LICENSE): Apache License 2.0.
+
+## Optional
+
+- [The Price of a Model Pull](https://pulsys.io/blog/price-of-a-model-pull/): Benchmarking repeated model downloads and the warm cache path.
+- [Chasing the Absolute Floor](https://pulsys.io/blog/darwin-warm-path-optimizations/): Darwin sendfile and single-syscall warm-path engineering.
+- [Code of Conduct](https://raw.githubusercontent.com/pulsys-io/pulsys/main/CODE_OF_CONDUCT.md): Community standards.
