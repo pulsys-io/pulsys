@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.3](https://github.com/pulsys-io/pulsys/compare/v0.1.2...v0.1.3) (2026-07-14)
+
+
+### Bug Fixes
+
+* **upstream:** re-check host allowlist at the outbound request sink (SSRF defense in depth)
+* **helm:** fail install when `postgres.host` is set with an empty password
+* **fixtures:** bound safetensors body size before allocation
+
+
+### Chores
+
+* **bench-coreserver:** honor `PULSYS_MEMPROFILE_RATE` for alloc profiling
+
 ## [0.1.2](https://github.com/pulsys-io/pulsys/compare/v0.1.1...v0.1.2) (2026-07-14)
 
 
