@@ -66,9 +66,11 @@ helm install pulsys oci://ghcr.io/pulsys-io/charts/pulsys \
 ```
 
 Pulsys runs as a single proxy instance backed by an external PostgreSQL.
-Multi-node clustering is on the [roadmap](ROADMAP.md). Chart values, SSO setup,
-and hardening: [`deploy/charts/pulsys/`](deploy/charts/pulsys/),
-[`docs/oidc.md`](docs/oidc.md), [`docs/security.md`](docs/security.md).
+Multi-node clustering is on the [roadmap](ROADMAP.md).
+
+- Chart values: [`deploy/charts/pulsys/`](deploy/charts/pulsys/)
+- SSO setup: [`docs/oidc.md`](docs/oidc.md)
+- Hardening: [`docs/security.md`](docs/security.md)
 
 ## Documentation
 
