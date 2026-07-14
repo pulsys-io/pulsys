@@ -21,120 +21,54 @@ warm path.
 
 ---
 
-Pulsys is an authenticated pull-through cache for the Hugging Face Hub. It sits
-between your machines and `huggingface.co`: the first download of a model fills
-a local disk cache, and every download after that is served from disk with no
-upstream egress. Existing clients work unchanged — `huggingface_hub`,
-`transformers`, and the `hf` CLI all route through it via `HF_ENDPOINT`.
+Pulsys is an authenticated pull-through cache for the Hugging Face Hub. Point
+Hugging Face clients at it with `HF_ENDPOINT`: the first pull of a model fills a
+local disk cache, and every pull after that is served from disk with no upstream
+egress.
 
-Warm hits skip userspace copies entirely, using io_uring on Linux 6.1+ and
-`sendfile` on macOS.
+Warm hits use io_uring on Linux 6.1+ and `sendfile` on macOS.
 <!-- bench:headline:start -->
-On a 48-vCPU `c7i.12xlarge` (io_uring) it sustains **1.36M req/s** at 4 KiB and
-**90 GB/s** loopback at 16 MiB.
+On a 48-vCPU `c7i.12xlarge` it sustains **1.36M req/s** at 4 KiB and **90 GB/s**
+at 16 MiB.
 <!-- bench:headline:end -->
-Numbers, receipts, and reproduction:
-[`docs/benchmarks.md`](docs/benchmarks.md).
+See [`docs/benchmarks.md`](docs/benchmarks.md).
 
-There is no unauthenticated mode. Clients authenticate to Pulsys with API keys
-issued by its Postgres-backed admin plane, and Pulsys authenticates to Hugging
-Face with its own read-only token. Client credentials are never forwarded
-upstream. Details: [`docs/security.md`](docs/security.md#credential-model).
-
-## Clone
+## Quick start
 
 ```bash
 git clone --recurse-submodules https://github.com/pulsys-io/pulsys.git
 cd pulsys
-```
-
-## Run locally
-
-```bash
-export PULSYS_HF_TOKEN=hf_your_readonly_token   # required: Pulsys reads HF with this
+export PULSYS_HF_TOKEN=hf_your_readonly_token
 docker compose up --build
 ```
 
-Brings up the proxy, admin console + SSO, a Keycloak dev IdP, and Postgres.
-
-- Admin console: http://localhost:3000 (sign in `admin@pulsys.local` / `admin`)
-- Proxy: http://localhost:8082 — walkthrough: [`DEVELOPMENT.md`](DEVELOPMENT.md#local-development)
-
-Create a Pulsys API key at [http://localhost:3000/tokens](http://localhost:3000/tokens),
-then point any HF client at the proxy:
+Open the admin console at http://localhost:3000 (`admin@pulsys.local` / `admin`)
+and create an API key at `/tokens`. Then point any Hugging Face client at the
+proxy:
 
 ```bash
 export HF_ENDPOINT=http://localhost:8082
-export HF_TOKEN=pulsys_...           # your Pulsys API key (proxy returns 401 without one)
+export HF_TOKEN=pulsys_...           # the API key you just created
 hf download Qwen/Qwen2.5-0.5B        # first run fills the cache; next run is served from disk
 ```
 
 `huggingface_hub`, `transformers`, `datasets`, the `hf` CLI, and `hf_transfer`
-all work unchanged via `HF_ENDPOINT`. Config reference:
-[`internal/config/config.go`](internal/config/config.go) (every flag has a
-`PULSYS_`-prefixed env var).
+work unchanged.
 
-## Deploy (Kubernetes)
+## Deploy
 
 ```bash
 helm install pulsys oci://ghcr.io/pulsys-io/charts/pulsys \
   --set proxy.publicBaseURL=https://hf.example.com \
-  --set admin.enabled=true \
   --set postgres.host=postgres.db.svc \
   --set admin.imports.hfTokenSecret=pulsys-hf \
   --set persistence.size=200Gi
 ```
 
-Or install from this repo:
-
-```bash
-helm install pulsys deploy/charts/pulsys \
-  -f deploy/charts/pulsys/ci/admin-values.yaml
-```
-
-- Chart (values, JSON-schema-validated, kind-tested in CI): [`deploy/charts/pulsys/`](deploy/charts/pulsys/)
-- Production SSO (Keycloak / Cognito / IAM Identity Center): [`docs/oidc.md`](docs/oidc.md)
-- Production topology + hardening: [`docs/security.md`](docs/security.md#deployment-security-model)
-
-## Project status & scope
-
-Pulsys is production-targeted as a **single-node** pull-through cache: one proxy
-instance on persistent disk, backed by a (separately HA-able) Postgres admin
-plane. A node restart is a brief blip rather than data loss — the cache is
-rebuildable from Hugging Face and admin/job state lives in Postgres.
-
-| Capability | Status |
-|---|---|
-| Single-node proxy + warm cache | Supported |
-| Authenticated admin plane (Postgres) | Supported |
-| Kubernetes deploy (single replica) | Supported |
-| Multi-node / high-availability **clustering** | **Not supported — [roadmap (v2)](ROADMAP.md)** |
-
-> [!IMPORTANT]
-> Run a **single** proxy replica (with health checks, auto-restart, and a
-> persistent volume); make the Postgres admin plane HA separately. Running more
-> than one replica is **not currently supported** — in-flight de-duplication and
-> other coordination are per-process and not shared across nodes. Horizontal
-> scale-out / HA clustering is a v2 item: [`ROADMAP.md`](ROADMAP.md).
-
-## Test & benchmark
-
-```bash
-go test -race ./...                  # full suite
-scripts/bench_compare.sh             # local warm-hit comparison vs DingoSpeed / Caddy / nginx
-```
-
-EC2 io_uring saturation (CDK + SSM), methodology, and io_uring verification:
-[`docs/benchmarks.md`](docs/benchmarks.md). The default reference run uses
-`c7i.12xlarge`; bare metal is an optional override.
-
-## Security
-
-Pulsys ships a custom HTTP/1.1 server with differential tests against Go's
-standard library behavior, fuzzing, and public request-smuggling corpora on
-every commit. Rationale, CVE remediation, and test provenance:
-[`docs/security.md`](docs/security.md). To report a
-vulnerability, see [SECURITY.md](SECURITY.md).
+Pulsys runs as a single proxy instance backed by an external PostgreSQL.
+Multi-node clustering is on the [roadmap](ROADMAP.md). Chart values, SSO setup,
+and hardening: [`deploy/charts/pulsys/`](deploy/charts/pulsys/),
+[`docs/oidc.md`](docs/oidc.md), [`docs/security.md`](docs/security.md).
 
 ## Documentation
 
