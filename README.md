@@ -57,13 +57,22 @@ work unchanged.
 
 ## Deploy
 
+Install the chart from this repo. Release images are published to
+[`ghcr.io/pulsys-io/pulsys`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys):
+
 ```bash
-helm install pulsys oci://ghcr.io/pulsys-io/charts/pulsys \
+kubectl create secret generic pulsys-hf --from-literal=token=hf_your_readonly_token
+
+helm install pulsys deploy/charts/pulsys \
   --set proxy.publicBaseURL=https://hf.example.com \
   --set postgres.host=postgres.db.svc \
   --set admin.imports.hfTokenSecret=pulsys-hf \
   --set persistence.size=200Gi
 ```
+
+To build the image yourself instead:
+`docker build -t pulsys:local -f deploy/docker/Dockerfile .`, then set
+`image.repository` / `image.tag` accordingly.
 
 Pulsys runs as a single proxy instance backed by an external PostgreSQL.
 Multi-node clustering is on the [roadmap](ROADMAP.md).

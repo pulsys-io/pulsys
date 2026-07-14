@@ -26,7 +26,7 @@ index is the map for everything else, grouped by what you are trying to do.
 | [`../deploy/charts/pulsys/README.md`](../deploy/charts/pulsys/README.md) | Helm chart: values reference and examples. |
 | [`../infra/cdk/README.md`](../infra/cdk/README.md) | Benchmark AMI build + CDK + SSM harness. |
 | [`../admin-ui/README.md`](../admin-ui/README.md) | Admin console (Next.js SPA). |
-| [`results/`](results/) | Generated benchmark datasets and charts (Darwin head-to-head; EC2 ships empty). |
+| [`results/`](results/) | Generated benchmark datasets and charts (Darwin head-to-head and EC2 saturation). |
 
 ## Project files (repo root)
 

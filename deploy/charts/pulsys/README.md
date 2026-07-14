@@ -11,8 +11,8 @@ from a local cache at line rate. Pulsys is authenticated by default: the
 **Pulsys admin plane** (OIDC login, RBAC, audit log, model imports) is required,
 so every data-plane request carries a per-request Pulsys API key.
 
-> This chart is also published to an OCI registry:
-> `oci://ghcr.io/pulsys-io/charts/pulsys`.
+> Install this chart from a git clone (`deploy/charts/pulsys`). Release
+> container images are published to `ghcr.io/pulsys-io/pulsys`.
 
 ## TL;DR
 
@@ -21,7 +21,7 @@ so every data-plane request carries a per-request Pulsys API key.
 # holding a read-only Hugging Face token, then install:
 kubectl create secret generic pulsys-hf --from-literal=token=hf_your_readonly_token
 
-helm install pulsys oci://ghcr.io/pulsys-io/charts/pulsys \
+helm install pulsys ./deploy/charts/pulsys \
   --set proxy.publicBaseURL=https://hf.example.com \
   --set admin.enabled=true \
   --set postgres.host=postgres.db.svc \
@@ -50,7 +50,7 @@ operator. See [`examples/cnpg-cluster.yaml`](examples/cnpg-cluster.yaml).
 kubectl apply -f examples/cnpg-cluster.yaml
 
 # 2. Install the chart pointing at the CNPG-generated app Secret:
-helm install pulsys oci://ghcr.io/pulsys-io/charts/pulsys \
+helm install pulsys ./deploy/charts/pulsys \
   --set proxy.publicBaseURL=https://hf.example.com \
   --set admin.enabled=true \
   --set postgres.existingSecret=pulsys-pg-app \

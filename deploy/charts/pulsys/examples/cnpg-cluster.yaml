@@ -11,7 +11,7 @@
 #
 # 3. Point the chart at the CNPG-generated app Secret (it contains a ready
 #    `uri` key with the full DSN):
-#      helm install pulsys oci://ghcr.io/pulsys-io/charts/pulsys \
+#      helm install pulsys deploy/charts/pulsys \
 #        --set proxy.publicBaseURL=https://hf.example.com \
 #        --set admin.enabled=true \
 #        --set postgres.existingSecret=pulsys-pg-app \

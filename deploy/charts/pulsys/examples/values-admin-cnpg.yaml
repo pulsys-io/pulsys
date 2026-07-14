@@ -1,7 +1,7 @@
 # Full Pulsys admin plane (OIDC, RBAC, audit, imports) backed by a CNPG
 # Postgres Cluster (see cnpg-cluster.yaml) and OIDC login.
 #
-#   helm install pulsys oci://ghcr.io/pulsys-io/charts/pulsys -f values-admin-cnpg.yaml
+#   helm install pulsys . -f values-admin-cnpg.yaml
 proxy:
   publicBaseURL: https://hf.example.com
 

@@ -109,7 +109,7 @@ the chart configure the database:
 ```bash
 kubectl create secret generic pulsys-oidc --from-literal=client-secret="$SECRET"
 
-helm upgrade --install pulsys oci://ghcr.io/pulsys-io/charts/pulsys \
+helm upgrade --install pulsys deploy/charts/pulsys \
   --set proxy.publicBaseURL=https://hf.example.com \
   --set admin.enabled=true \
   --set postgres.existingSecret=pulsys-pg-app --set postgres.existingSecretKey=uri \
@@ -175,7 +175,7 @@ aws cognito-idp admin-add-user-to-group --region "$REGION" \
 ```bash
 kubectl create secret generic pulsys-oidc --from-literal=client-secret="$CLIENT_SECRET"
 
-helm upgrade --install pulsys oci://ghcr.io/pulsys-io/charts/pulsys \
+helm upgrade --install pulsys deploy/charts/pulsys \
   --set proxy.publicBaseURL="https://${DOMAIN_HOST}" \
   --set admin.enabled=true \
   --set postgres.existingSecret=pulsys-pg-app --set postgres.existingSecretKey=uri \
@@ -215,7 +215,7 @@ instructions rather than faking the assignment.
 ```bash
 kubectl create secret generic pulsys-oidc --from-literal=client-secret="$IDC_CLIENT_SECRET"
 
-helm upgrade --install pulsys oci://ghcr.io/pulsys-io/charts/pulsys \
+helm upgrade --install pulsys deploy/charts/pulsys \
   --set proxy.publicBaseURL=https://hf.example.com \
   --set admin.enabled=true \
   --set postgres.existingSecret=pulsys-pg-app --set postgres.existingSecretKey=uri \
