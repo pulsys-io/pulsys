@@ -64,11 +64,22 @@ func ReadmeMD(name string) []byte {
 	return []byte("# " + name + "\n\nFixture model used by pulsys-go test harness.\n")
 }
 
+// maxFixtureBody bounds SafetensorsHeader's body so the total
+// allocation size cannot overflow int (CWE-190). Fixtures only ever
+// need a few KiB; 256 MiB is far above any real test need.
+const maxFixtureBody = 256 << 20
+
 // SafetensorsHeader returns a minimal safetensors header (an 8-byte
 // little-endian length prefix followed by JSON). The body is N zero
 // bytes appended after the header — enough to exercise the proxy's
 // streaming + range code paths without committing real model weights.
+//
+// bodyBytes must be in [0, maxFixtureBody]; anything else is a test bug
+// and panics rather than risk an overflowing allocation.
 func SafetensorsHeader(bodyBytes int) []byte {
+	if bodyBytes < 0 || bodyBytes > maxFixtureBody {
+		panic("fixtures: SafetensorsHeader bodyBytes out of range")
+	}
 	header := map[string]any{
 		"__metadata__": map[string]string{"format": "pt"},
 		"weight":       map[string]any{"dtype": "F32", "shape": []int{bodyBytes / 4}, "data_offsets": []int{0, bodyBytes}},

@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"github.com/pulsys-io/pulsys/internal/config"
+	"github.com/pulsys-io/pulsys/internal/hostallow"
 )
 
 // Response is a transport-agnostic streaming response.
@@ -108,13 +109,39 @@ func New(cfg *config.Config) Client {
 			return http.ErrUseLastResponse
 		},
 	}
-	return &netClient{cfg: cfg, hc: hc, tr: tr}
+	return &netClient{
+		cfg:         cfg,
+		hc:          hc,
+		tr:          tr,
+		allow:       hostallow.New(cfg.AllowHost),
+		defaultHost: strings.ToLower(strings.TrimSpace(cfg.DefaultHost)),
+	}
 }
 
 type netClient struct {
 	cfg *config.Config
 	hc  *http.Client
 	tr  *http.Transport
+	// allow is the outbound SSRF gate, re-checked here as defense in
+	// depth even though the proxy handler already validates /_p/ hosts.
+	allow hostallow.Matcher
+	// defaultHost is the operator-configured upstream; it is trusted
+	// unconditionally (it may legitimately be a loopback fake under
+	// tests/benchmarks) and so bypasses the allowlist.
+	defaultHost string
+}
+
+// hostAllowed reports whether host may be contacted: the configured
+// default upstream is always permitted; any other host (a /_p/ target
+// or a rewritten redirect host) must clear the allowlist + SSRF deny
+// gate. This mirrors the routing check in internal/proxy so a routing
+// regression cannot turn into a server-side request forgery.
+func (c *netClient) hostAllowed(host string) bool {
+	h := strings.ToLower(strings.TrimSpace(host))
+	if h != "" && h == c.defaultHost {
+		return true
+	}
+	return c.allow(h)
 }
 
 // hopByHop lists outbound headers we strip on every upstream request.
@@ -131,6 +158,13 @@ func (c *netClient) upstreamURL(host, path, query string) (*url.URL, error) {
 	host = strings.ToLower(strings.TrimSpace(host))
 	if host == "" {
 		return nil, errors.New("upstream: empty host")
+	}
+	// Defense in depth: refuse to build a request to a host that is
+	// neither the configured upstream nor on the allowlist. Guards the
+	// net/http sink against SSRF if a caller ever passes an
+	// externally-influenced host (CWE-918).
+	if !c.hostAllowed(host) {
+		return nil, fmt.Errorf("upstream: host not allowed: %q", host)
 	}
 	if path == "" {
 		path = "/"

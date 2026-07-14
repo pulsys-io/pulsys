@@ -32,7 +32,6 @@ import (
 	"io"
 	"log/slog"
 	"math"
-	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -41,30 +40,11 @@ import (
 	"github.com/pulsys-io/pulsys/internal/cache"
 	"github.com/pulsys-io/pulsys/internal/classify"
 	"github.com/pulsys-io/pulsys/internal/config"
+	"github.com/pulsys-io/pulsys/internal/hostallow"
 	"github.com/pulsys-io/pulsys/internal/rewrite"
 	"github.com/pulsys-io/pulsys/internal/telemetry"
 	"github.com/pulsys-io/pulsys/internal/upstream"
 )
-
-// parseHostIP parses bare as either a dotted IPv4 or a bracketed-or-
-// bare IPv6 literal, returning nil if it is a DNS name.  Used by
-// allowMatcher to detect IP-class targets we deny unconditionally.
-func parseHostIP(bare string) net.IP {
-	return net.ParseIP(strings.Trim(bare, "[]"))
-}
-
-// ipIsPrivate reports whether ip is in any of the loopback, link-
-// local, or RFC 1918 / RFC 4193 ranges.  Returns true even for
-// 0.0.0.0 (an unspecified address that should never be a target).
-func ipIsPrivate(ip net.IP) bool {
-	if ip.IsLoopback() || ip.IsLinkLocalUnicast() ||
-		ip.IsLinkLocalMulticast() || ip.IsPrivate() ||
-		ip.IsUnspecified() {
-		return true
-	}
-	// IsPrivate covers RFC 1918 + RFC 4193 (fc00::/7) in Go 1.17+.
-	return false
-}
 
 // hopRequestHeaders are stripped before any outbound upstream request.
 var hopRequestHeaders = map[string]struct{}{
@@ -230,75 +210,8 @@ func NewHandler(cfg *config.Config, store *cache.Store, up upstream.Client, log 
 		store:          store,
 		up:             up,
 		log:            log,
-		allowf:         allowMatcher(cfg.AllowHost),
+		allowf:         hostallow.New(cfg.AllowHost),
 		inflightBudget: cfg.InflightAcquireTimeout,
-	}
-}
-
-// allowMatcher returns a closure that reports whether a host is on
-// the operator-configured allowlist.  Even if the operator passes
-// a permissive allowlist, we DENY the following host classes
-// unconditionally because they can never be the legitimate target
-// of a public HF mirror and are the canonical SSRF payloads:
-//
-//   - Loopback literals: 127.0.0.1, ::1, localhost (in any case).
-//   - Link-local IPv4: 169.254.0.0/16 (AWS / GCP / Azure IMDS).
-//   - Link-local IPv6: fe80::/10.
-//   - Private IPv4: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16.
-//   - Unique local IPv6: fc00::/7.
-//   - Cloud metadata DNS: metadata.google.internal, metadata.aws.internal.
-//
-// The allowlist itself is then consulted only if the host passes
-// the deny gate.  An operator who needs to mirror an internal
-// host should run pulsys in a network namespace that simply
-// cannot reach the metadata service, NOT widen the allowlist.
-func allowMatcher(allowed []string) func(string) bool {
-	denyHostnames := map[string]struct{}{
-		"localhost":                {},
-		"metadata.google.internal": {},
-		"metadata.aws.internal":    {},
-		"169.254.169.254":          {},
-	}
-	return func(host string) bool {
-		h := strings.ToLower(strings.TrimSpace(host))
-		if h == "" {
-			return false
-		}
-		// Strip any port suffix; ParseIP needs a bare address.
-		bare := h
-		if i := strings.LastIndex(h, ":"); i >= 0 {
-			// IPv6 literals in URLs are bracketed: "[::1]:443".
-			// Strip brackets first.
-			if strings.HasPrefix(h, "[") {
-				j := strings.Index(h, "]")
-				if j > 0 {
-					bare = strings.Trim(h[:j+1], "[]")
-				}
-			} else {
-				bare = h[:i]
-			}
-		} else if strings.HasPrefix(h, "[") {
-			bare = strings.Trim(h, "[]")
-		}
-		if _, deny := denyHostnames[bare]; deny {
-			return false
-		}
-		if ip := parseHostIP(bare); ip != nil {
-			if ipIsPrivate(ip) {
-				return false
-			}
-		}
-		for _, a := range allowed {
-			if h == a || strings.HasSuffix(h, "."+a) {
-				return true
-			}
-			// Also match against the bare (port-stripped) form so
-			// "huggingface.co:443" matches "huggingface.co".
-			if bare == a || strings.HasSuffix(bare, "."+a) {
-				return true
-			}
-		}
-		return false
 	}
 }
 
