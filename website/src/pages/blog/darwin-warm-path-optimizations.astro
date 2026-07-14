@@ -2,14 +2,32 @@
 import Layout from '../../layouts/Layout.astro';
 
 const publishedDate = '2026-05-16';
+const siteOrigin = Astro.site ? Astro.site.origin : 'https://pulsys.io';
+const postTitle = 'Chasing the Absolute Floor: Zero-Copy, Single-Syscall HTTP on Darwin in Go';
+const postDescription =
+  'An engineering journey from the default Go net/http serve loop to a perfectly fused, single-syscall cache hit on macOS.';
+const structuredData = [
+  {
+    '@type': 'BlogPosting',
+    headline: postTitle,
+    description: postDescription,
+    datePublished: publishedDate,
+    url: `${siteOrigin}/blog/darwin-warm-path-optimizations/`,
+    image: `${siteOrigin}/og.png`,
+    author: { '@id': `${siteOrigin}/#organization` },
+    publisher: { '@id': `${siteOrigin}/#organization` },
+    mainEntityOfPage: `${siteOrigin}/blog/darwin-warm-path-optimizations/`,
+  },
+];
 ---
 
 <Layout
-  title="Chasing the Absolute Floor: Zero-Copy, Single-Syscall HTTP on Darwin in Go"
-  description="An engineering journey from the default Go net/http serve loop to a perfectly fused, single-syscall cache hit on macOS."
+  title={postTitle}
+  description={postDescription}
   current="blog"
   ogType="article"
   publishedTime={publishedDate}
+  structuredData={structuredData}
 >
   <article class="wrap legal">
     <h1>Chasing the Absolute Floor: Zero-Copy, Single-Syscall HTTP on Darwin in Go</h1>

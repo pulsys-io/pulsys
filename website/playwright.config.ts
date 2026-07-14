@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 4321;
+const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 4321);
 const BASE_PATH = process.env.PUBLIC_BASE_PATH ?? '/pulsys';
 const BASE = `http://127.0.0.1:${PORT}${BASE_PATH === '/' ? '' : BASE_PATH.replace(/\/?$/, '/')}`;
 
@@ -34,7 +34,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run preview -- --host 127.0.0.1 --port 4321',
+    command: `npm run preview -- --host 127.0.0.1 --port ${PORT}`,
     url: BASE,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

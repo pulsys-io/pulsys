@@ -18,6 +18,8 @@ interface Props {
   marketing?: boolean;
   ogType?: 'website' | 'article';
   publishedTime?: string;
+  /** Page-specific schema.org nodes, merged into the site-wide JSON-LD graph. */
+  structuredData?: Record<string, unknown>[];
 }
 
 const {
@@ -27,12 +29,45 @@ const {
   marketing = false,
   ogType = 'website',
   publishedTime,
+  structuredData = [],
 } = Astro.props;
 const year = new Date().getFullYear();
 const base = import.meta.env.BASE_URL;
 const ogImage = Astro.site ? new URL(`${base}og.png`, Astro.site).href : `${base}og.png`;
 const canonicalUrl = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : Astro.url.href;
 const plausibleOrigin = plausibleDomain ? new URL(plausibleScriptSrc).origin : '';
+const siteOrigin = Astro.site ? Astro.site.origin : 'https://pulsys.io';
+
+// Site-wide entity graph. Every page carries Organization + WebSite so
+// crawlers and answer engines can resolve the publisher; pages append
+// their own nodes (SoftwareApplication, FAQPage, BlogPosting) via the
+// structuredData prop.
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${siteOrigin}/#organization`,
+      name: brandName,
+      url: `${siteOrigin}/`,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${siteOrigin}/brand/github-avatar-512.png`,
+        width: 512,
+        height: 512,
+      },
+      sameAs: [repoHref],
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${siteOrigin}/#website`,
+      name: brandName,
+      url: `${siteOrigin}/`,
+      publisher: { '@id': `${siteOrigin}/#organization` },
+    },
+    ...structuredData,
+  ],
+};
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -71,6 +106,9 @@ const contentSecurityPolicy = [
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <link rel="alternate" type="application/rss+xml" title={`${brandName} blog`} href="/rss.xml" />
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
     <style is:inline set:html={globalStyles}></style>
     {
       plausibleDomain && (

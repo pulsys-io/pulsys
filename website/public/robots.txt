@@ -1,4 +1,27 @@
+# pulsys.io — everything is public and indexable.
 User-agent: *
+Allow: /
+
+# AI/answer-engine crawlers are explicitly welcome (see also /llms.txt).
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
 Allow: /
 
 Sitemap: https://pulsys.io/sitemap-index.xml

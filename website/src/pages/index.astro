@@ -11,6 +11,32 @@ const rpsLabel =
     ? `${headline.peakRpsMillions.toFixed(2).replace(/\.?0+$/, '')}M`
     : `${Math.round(headline.peakRps / 1000)}k`;
 const gbLabel = `${Math.round(headline.peakGbPerS)} GB/s`;
+
+const siteOrigin = Astro.site ? Astro.site.origin : 'https://pulsys.io';
+const structuredData = [
+  {
+    '@type': 'SoftwareApplication',
+    '@id': `${siteOrigin}/#software`,
+    name: brandName,
+    description: marketing.pageDescription,
+    url: `${siteOrigin}/`,
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Linux, macOS',
+    license: 'https://www.apache.org/licenses/LICENSE-2.0',
+    codeRepository: repoHref,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    publisher: { '@id': `${siteOrigin}/#organization` },
+  },
+  {
+    '@type': 'FAQPage',
+    '@id': `${siteOrigin}/#faq`,
+    mainEntity: marketing.faq.map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: { '@type': 'Answer', text: item.a },
+    })),
+  },
+];
 ---
 
 <Layout
@@ -18,6 +44,7 @@ const gbLabel = `${Math.round(headline.peakGbPerS)} GB/s`;
   description={marketing.pageDescription}
   current="home"
   marketing
+  structuredData={structuredData}
 >
   <div class="lp">
     <section class="lp-hero">

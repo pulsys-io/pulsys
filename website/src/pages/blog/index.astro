@@ -1,6 +1,14 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { brandName } from '../../site.config';
+import { posts } from '../../data/posts';
+
+const monthYear = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
 ---
 
 <Layout
@@ -14,21 +22,15 @@ import { brandName } from '../../site.config';
       <h1 class="lp-title">Blog</h1>
 
       <section class="post-list" aria-label="Published posts">
-        <article class="post-card blog-post-card">
-          <p class="post-meta tabular">July 2026</p>
-          <h2 class="post-title">
-            <a href="/blog/price-of-a-model-pull">The Price of a Model Pull: Benchmarking a Cache at the Syscall Floor</a>
-          </h2>
-          <p class="muted">What repeated downloads cost a GPU fleet, and how far the warm path goes at one kernel crossing per response.</p>
-        </article>
-
-        <article class="post-card blog-post-card">
-          <p class="post-meta tabular">May 2026</p>
-          <h2 class="post-title">
-            <a href="/blog/darwin-warm-path-optimizations">Chasing the Absolute Floor: Zero-Copy, Single-Syscall HTTP on Darwin in Go</a>
-          </h2>
-          <p class="muted">From the default <code>net/http</code> loop to a perfectly fused, single-syscall cache hit on macOS.</p>
-        </article>
+        {posts.map((post) => (
+          <article class="post-card blog-post-card">
+            <p class="post-meta tabular">{monthYear(post.published)}</p>
+            <h2 class="post-title">
+              <a href={`/blog/${post.slug}/`}>{post.title}</a>
+            </h2>
+            <p class="muted">{post.description}</p>
+          </article>
+        ))}
       </section>
     </section>
   </div>

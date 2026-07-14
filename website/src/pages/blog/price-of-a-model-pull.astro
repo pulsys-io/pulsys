@@ -5,6 +5,23 @@ import { headline } from '../../generated/headline';
 
 const publishedDate = '2026-07-13';
 const base = import.meta.env.BASE_URL;
+const siteOrigin = Astro.site ? Astro.site.origin : 'https://pulsys.io';
+const postTitle = 'The Price of a Model Pull: Benchmarking a Cache at the Syscall Floor';
+const postDescription =
+  'What repeated model downloads cost a GPU fleet, and how far a pull-through cache can go when the warm path is engineered down to one kernel boundary crossing.';
+const structuredData = [
+  {
+    '@type': 'BlogPosting',
+    headline: postTitle,
+    description: postDescription,
+    datePublished: publishedDate,
+    url: `${siteOrigin}/blog/price-of-a-model-pull/`,
+    image: `${siteOrigin}/og.png`,
+    author: { '@id': `${siteOrigin}/#organization` },
+    publisher: { '@id': `${siteOrigin}/#organization` },
+    mainEntityOfPage: `${siteOrigin}/blog/price-of-a-model-pull/`,
+  },
+];
 const rpsLabel =
   headline.peakRpsMillions >= 1
     ? `${headline.peakRpsMillions.toFixed(2).replace(/\.?0+$/, '')}M`
@@ -12,11 +29,12 @@ const rpsLabel =
 ---
 
 <Layout
-  title="The Price of a Model Pull: Benchmarking a Cache at the Syscall Floor"
-  description="What repeated model downloads cost a GPU fleet, and how far a pull-through cache can go when the warm path is engineered down to one kernel boundary crossing."
+  title={postTitle}
+  description={postDescription}
   current="blog"
   ogType="article"
   publishedTime={publishedDate}
+  structuredData={structuredData}
 >
   <article class="wrap legal">
     <h1>The Price of a Model Pull: Benchmarking a Cache at the Syscall Floor</h1>

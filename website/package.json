@@ -15,6 +15,7 @@
     "screenshot:update": "npm run build && playwright test --update-snapshots"
   },
   "dependencies": {
+    "@astrojs/rss": "^4.0.19",
     "@astrojs/starlight": "^0.41.3",
     "asciinema-player": "^3.17.0",
     "astro": "^7.0.9",
