@@ -43,8 +43,8 @@ docker compose up --build
 ```
 
 Open the admin console at http://localhost:3000 (`admin@pulsys.local` / `admin`)
-and create an API key at `/tokens`. Then point any Hugging Face client at the
-proxy:
+and create an API key at [http://localhost:3000/tokens](http://localhost:3000/tokens).
+Then point any Hugging Face client at the proxy:
 
 ```bash
 export HF_ENDPOINT=http://localhost:8082
