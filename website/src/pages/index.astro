@@ -78,14 +78,6 @@ $ export HF_TOKEN=pulsys_...
 $ {cliBinName} download {demoModelId}
 Resolving data files...
 Download complete (warm)  664 MiB/s  (5.57 Gb/s)</code></pre>
-            <button
-              id="asciinema-play"
-              class="lp-terminal__play"
-              type="button"
-              aria-controls="asciinema-hf-demo"
-            >
-              Play demo
-            </button>
           </div>
         </div>
       </div>
@@ -286,14 +278,10 @@ export HF_TOKEN=pulsys_...
   <script>
     import playerStylesUrl from 'asciinema-player/dist/bundle/asciinema-player.css?url';
 
-    const play = document.getElementById('asciinema-play') as HTMLButtonElement | null;
-    play?.addEventListener('click', async () => {
+    const startDemo = async () => {
       const el = document.getElementById('asciinema-hf-demo');
       const terminal = el?.closest('.lp-terminal');
-      if (!el || !terminal || play.disabled) return;
-
-      play.disabled = true;
-      play.textContent = 'Loading…';
+      if (!el || !terminal) return;
 
       try {
         let styles = document.querySelector<HTMLLinkElement>('link[data-asciinema-styles]');
@@ -320,9 +308,11 @@ export HF_TOKEN=pulsys_...
           speed: 1.0,
         });
       } catch {
-        play.textContent = 'Demo unavailable';
+        // The readable static transcript remains visible if the player fails.
       }
-    });
+    };
+
+    void startDemo();
   </script>
 </Layout>
 

@@ -5,9 +5,6 @@ direction and rough priority; they have **no committed timeline**, and
 priorities may change. Nothing here is guaranteed to ship in any particular
 release.
 
-For what is supported **today**, see the
-[Project status & scope](README.md#project-status--scope) section of the README.
-
 ## v2 — High-availability clustering
 
 **Status: planned — not yet supported.**
