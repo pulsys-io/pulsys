@@ -4,7 +4,7 @@
 #   pulsys  HF cache proxy + admin API listener
 #   console   nginx + static admin SPA
 
-FROM golang:1.26-bookworm@sha256:18aedc16aa19b3fd7ded7245fc14b109e054d65d22ed53c355c899582bbb2113 AS go-builder
+FROM golang:1.26-bookworm@sha256:1ecb7edf62a0408027bd5729dfd6b1b8766e578e8df93995b225dfd0944eb651 AS go-builder
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
@@ -12,7 +12,7 @@ COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/pulsys ./cmd/pulsys && \
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/pulsys-db ./cmd/pulsys-db
 
-FROM node:26-bookworm@sha256:e2cd0ff87e2597f66fab50710216e2a08ad2f09bae0ca78f6b31e8c5f1a811a0 AS ui-builder
+FROM node:26-bookworm@sha256:219fc9da91e7f29a9f32290ff598cdf8886fd68f421ff515c8f93434da39a271 AS ui-builder
 WORKDIR /app
 COPY admin-ui/package.json admin-ui/package-lock.json ./
 RUN npm ci
@@ -38,7 +38,7 @@ RUN chmod +x /usr/local/bin/pulsys-pulsys
 USER pulsys
 ENTRYPOINT ["/usr/local/bin/pulsys-pulsys"]
 
-FROM nginx:1.31-alpine@sha256:54f2a904c251d5a34adf545a72d32515a15e08418dae0266e23be2e18c66fefa AS console
+FROM nginx:1.31-alpine@sha256:4a73073bd557c65b759505da037898b61f1be6cbcc3c2c3aeac22d2a470c1752 AS console
 RUN rm -f /etc/nginx/conf.d/default.conf
 COPY docker/nginx/pulsys.conf /etc/nginx/conf.d/pulsys.conf
 COPY docker/nginx/pulsys_proxy_headers.inc /etc/nginx/conf.d/pulsys_proxy_headers.inc
