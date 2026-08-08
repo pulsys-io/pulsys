@@ -13,20 +13,21 @@ from a local cache at line rate. Pulsys is authenticated by default: the
 **Pulsys admin plane** (OIDC login, RBAC, audit log, model imports) is required,
 so every data-plane request carries a per-request Pulsys API key.
 
-> Install this chart from a git clone (`deploy/charts/pulsys`). The chart
-> pulls public release images
-> [`ghcr.io/pulsys-io/pulsys`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys)
+> Install from a git clone. Pulls
+> [`ghcr.io/pulsys-io/pulsys:latest`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys)
 > and
-> [`ghcr.io/pulsys-io/pulsys-console`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys-console).
-> Empty `image.tag` / `console.image.tag` fall back to the chart's
-> `appVersion`; the examples below use `:latest`. By default it also deploys
-> the compose-equivalent **dev Keycloak** (OIDC login as `admin@pulsys.local` /
-> `admin`). After the first console image push, set the GHCR package visibility
-> to **Public** once (org packages default to private).
+> [`ghcr.io/pulsys-io/pulsys-console:latest`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys-console).
+> Default install also runs a **dev Keycloak** (`admin@pulsys.local` /
+> `admin`). After the first console image push, set that GHCR package
+> visibility to **Public** once (org packages default to private).
 
-## TL;DR (Kind, local)
+## TL;DR
 
 ```bash
+git clone --recurse-submodules https://github.com/pulsys-io/pulsys.git
+cd pulsys
+export PULSYS_HF_TOKEN=hf_your_readonly_token
+
 kind create cluster --name pulsys
 
 kubectl apply --server-side -f \
@@ -38,12 +39,8 @@ kubectl wait --for=condition=Ready cluster/pulsys-pg --timeout=5m
 
 kubectl create secret generic pulsys-hf --from-literal=token="$PULSYS_HF_TOKEN"
 
-# Console image is not on GHCR until a release ships it — build + load.
-docker build -f docker/Dockerfile --target console -t pulsys-console:local .
-kind load docker-image pulsys-console:local --name pulsys
-
 helm upgrade --install pulsys deploy/charts/pulsys \
-  -f deploy/charts/pulsys/examples/values-kind-local.yaml
+  -f deploy/charts/pulsys/examples/values-kind.yaml
 
 kubectl port-forward svc/pulsys-console 3000:80 &
 kubectl port-forward svc/pulsys-keycloak 8081:8080 &
@@ -66,9 +63,9 @@ operator. See [`examples/cnpg-cluster.yaml`](examples/cnpg-cluster.yaml).
 
 ## Admin plane with CloudNativePG
 
-Local Kind: use [`examples/cnpg-cluster-kind.yaml`](examples/cnpg-cluster-kind.yaml)
-(1 instance) and [`examples/values-kind-local.yaml`](examples/values-kind-local.yaml)
-as in the TL;DR above (dev Keycloak is enabled by default).
+Local Kind: use the TL;DR above
+([`examples/cnpg-cluster-kind.yaml`](examples/cnpg-cluster-kind.yaml) +
+[`examples/values-kind.yaml`](examples/values-kind.yaml)).
 
 Production-shaped install (you bring your own IdP Secret):
 

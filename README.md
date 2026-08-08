@@ -58,12 +58,17 @@ hf download Qwen/Qwen2.5-0.5B        # first run fills the cache; next run is se
 `huggingface_hub`, `transformers`, `datasets`, the `hf` CLI, and `hf_transfer`
 work unchanged.
 
-## Deploy (Kind, local)
+## Deploy
 
-The chart needs an external Postgres (CNPG), a Hugging Face token Secret, and
-— until a release publishes it — a locally built console image. From a clone:
+Pulls `ghcr.io/pulsys-io/pulsys:latest` and
+`ghcr.io/pulsys-io/pulsys-console:latest`. Needs
+[Kind](https://kind.sigs.k8s.io/), Helm, and a Hugging Face read token.
 
 ```bash
+git clone --recurse-submodules https://github.com/pulsys-io/pulsys.git
+cd pulsys
+export PULSYS_HF_TOKEN=hf_your_readonly_token
+
 kind create cluster --name pulsys
 
 kubectl apply --server-side -f \
@@ -73,35 +78,20 @@ kubectl -n cnpg-system rollout status deploy/cnpg-controller-manager --timeout=5
 kubectl apply -f deploy/charts/pulsys/examples/cnpg-cluster-kind.yaml
 kubectl wait --for=condition=Ready cluster/pulsys-pg --timeout=5m
 
-export PULSYS_HF_TOKEN=hf_your_readonly_token
 kubectl create secret generic pulsys-hf --from-literal=token="$PULSYS_HF_TOKEN"
 
-docker build -f docker/Dockerfile --target console -t pulsys-console:local .
-kind load docker-image pulsys-console:local --name pulsys
-
 helm upgrade --install pulsys deploy/charts/pulsys \
-  -f deploy/charts/pulsys/examples/values-kind-local.yaml
-
-kubectl rollout status deploy/pulsys --timeout=3m
-kubectl rollout status deploy/pulsys-console --timeout=3m
-kubectl rollout status deploy/pulsys-keycloak --timeout=3m
+  -f deploy/charts/pulsys/examples/values-kind.yaml
 
 kubectl port-forward svc/pulsys-console 3000:80 &
 kubectl port-forward svc/pulsys-keycloak 8081:8080 &
 kubectl port-forward svc/pulsys 8082:8080 &
 ```
 
-Open http://localhost:3000 and sign in as `admin@pulsys.local` / `admin`.
-Proxy is on http://localhost:8082 (`HF_ENDPOINT`).
+Open http://localhost:3000 — `admin@pulsys.local` / `admin`.
+Proxy: http://localhost:8082.
 
-`values-kind-local.yaml` pulls `ghcr.io/pulsys-io/pulsys:latest` and loads
-the console from the Kind node (`pulsys-console:local`). After a release
-publishes `ghcr.io/pulsys-io/pulsys-console`, you can switch the console
-image to that registry tag instead of building it.
-
-Chart values, CNPG examples, and production notes:
-[`deploy/charts/pulsys/`](deploy/charts/pulsys/). SSO: [`docs/oidc.md`](docs/oidc.md).
-Hardening: [`docs/security.md`](docs/security.md).
+More chart options: [`deploy/charts/pulsys/`](deploy/charts/pulsys/).
 
 ## Documentation
 
