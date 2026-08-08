@@ -1,0 +1,7 @@
+# aws-cdk-lib bundles brace-expansion (inBundle: true), so npm overrides
+# cannot reach it. GHSA-rgw5-rvv9-x895 / CVE-2026-69152 needs 5.0.9 and the
+# newest aws-cdk-lib still ships 5.0.8 (this lockfile has 5.0.6). Remove
+# these once AWS publishes a release that bundles >=5.0.9.
+CVE-2026-13149
+CVE-2026-14257
+CVE-2026-69152
