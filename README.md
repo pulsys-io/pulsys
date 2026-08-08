@@ -35,6 +35,9 @@ See [`docs/benchmarks.md`](docs/benchmarks.md).
 
 ## Quick start
 
+Local full stack (builds from `docker/Dockerfile`: proxy, Postgres, Keycloak,
+admin console):
+
 ```bash
 git clone --recurse-submodules https://github.com/pulsys-io/pulsys.git
 cd pulsys
@@ -57,14 +60,27 @@ work unchanged.
 
 ## Deploy
 
-Install the chart from this repo. Release images are published to
-[`ghcr.io/pulsys-io/pulsys`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys):
+Kubernetes installs use the public release images
+[`ghcr.io/pulsys-io/pulsys`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys)
+and
+[`ghcr.io/pulsys-io/pulsys-console`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys-console)
+(multi-arch; anonymous pull). Confirm them first if you like:
+
+```bash
+docker pull ghcr.io/pulsys-io/pulsys:0.1.4
+docker pull ghcr.io/pulsys-io/pulsys-console:0.1.4
+# or: crane ls ghcr.io/pulsys-io/pulsys
+```
+
+Install the chart from this repo. The chart defaults `image.tag` to its
+`appVersion` (`0.1.4`):
 
 ```bash
 kubectl create secret generic pulsys-hf --from-literal=token=hf_your_readonly_token
 
 helm install pulsys deploy/charts/pulsys \
   --set proxy.publicBaseURL=https://hf.example.com \
+  --set admin.enabled=true \
   --set postgres.host=postgres.db.svc \
   --set admin.imports.hfTokenSecret=pulsys-hf \
   --set persistence.size=200Gi

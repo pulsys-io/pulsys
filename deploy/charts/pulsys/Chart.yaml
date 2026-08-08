@@ -4,8 +4,8 @@ description: A high-performance Hugging Face disk-caching reverse proxy with a r
 type: application
 # version  -> chart SemVer; bumped by chart-releaser/release tooling.
 # appVersion -> the pulsys container image tag this chart targets.
-version: 0.1.0
-appVersion: "0.1.0"
+version: 0.1.5
+appVersion: "0.1.4"
 kubeVersion: ">=1.27.0-0"
 icon: https://pulsys.io/logo.svg
 home: https://github.com/pulsys-io/pulsys
@@ -38,4 +38,8 @@ annotations:
   artifacthub.io/prerelease: "true"
   artifacthub.io/images: |
     - name: pulsys
-      image: ghcr.io/pulsys-io/pulsys:0.1.0
+      image: ghcr.io/pulsys-io/pulsys:0.1.4
+    - name: pulsys-console
+      image: ghcr.io/pulsys-io/pulsys-console:0.1.4
+    - name: keycloak
+      image: quay.io/keycloak/keycloak:26.0.5

@@ -217,8 +217,15 @@ Download complete (warm)  664 MiB/s  (5.57 Gb/s)</code></pre>
         {marketing.finalCtaHeadline}
       </h2>
       <div class="lp-quickstart__panel">
-        <pre class="lp-quickstart__code" tabindex="0"><code>export PULSYS_HF_TOKEN=hf_your_readonly_token
+        <pre class="lp-quickstart__code" tabindex="0"><code># Local stack (builds; does not pull GHCR)
+export PULSYS_HF_TOKEN=hf_your_readonly_token
 docker compose up --build</code></pre>
+        <pre class="lp-quickstart__code" tabindex="0"><code># Kubernetes (pulls public ghcr.io/pulsys-io/pulsys)
+helm install pulsys deploy/charts/pulsys \
+  --set proxy.publicBaseURL=https://hf.example.com \
+  --set admin.enabled=true \
+  --set postgres.host=postgres.db.svc \
+  --set admin.imports.hfTokenSecret=pulsys-hf</code></pre>
         <pre class="lp-quickstart__code" tabindex="0"><code>export HF_ENDPOINT=http://localhost:8082
 export HF_TOKEN=pulsys_...
 {cliBinName} download {demoModelId}</code></pre>

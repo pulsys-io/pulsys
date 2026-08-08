@@ -1,0 +1,76 @@
+{{- if and .Values.admin.enabled .Values.keycloak.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pulsys.fullname" . }}-keycloak
+  labels:
+    {{- include "pulsys.labels" . | nindent 4 }}
+    app.kubernetes.io/component: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "pulsys.keycloakSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "pulsys.labels" . | nindent 8 }}
+        app.kubernetes.io/component: keycloak
+        {{- include "pulsys.keycloakSelectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: keycloak
+          image: {{ printf "%s:%s" .Values.keycloak.image.repository .Values.keycloak.image.tag | quote }}
+          imagePullPolicy: {{ .Values.keycloak.image.pullPolicy }}
+          args:
+            - start-dev
+            - --import-realm
+            - --health-enabled=true
+          env:
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              value: {{ .Values.keycloak.adminUsername | quote }}
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              value: {{ .Values.keycloak.adminPassword | quote }}
+            - name: KC_HOSTNAME
+              value: {{ .Values.keycloak.hostname | quote }}
+            - name: KC_HOSTNAME_STRICT
+              value: "false"
+            - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
+              value: "true"
+            - name: KC_HTTP_ENABLED
+              value: "true"
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: management
+              containerPort: 9000
+              protocol: TCP
+          volumeMounts:
+            - name: realm
+              mountPath: /opt/keycloak/data/import/pulsys-realm.json
+              subPath: pulsys-realm.json
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: management
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health/ready
+              port: management
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            {{- toYaml .Values.keycloak.resources | nindent 12 }}
+      volumes:
+        - name: realm
+          configMap:
+            name: {{ include "pulsys.fullname" . }}-keycloak-realm
+{{- end }}

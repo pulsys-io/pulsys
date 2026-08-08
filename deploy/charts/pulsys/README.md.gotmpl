@@ -13,25 +13,37 @@ from a local cache at line rate. Pulsys is authenticated by default: the
 **Pulsys admin plane** (OIDC login, RBAC, audit log, model imports) is required,
 so every data-plane request carries a per-request Pulsys API key.
 
-> Install this chart from a git clone (`deploy/charts/pulsys`). Release
-> container images are published to `ghcr.io/pulsys-io/pulsys`.
+> Install this chart from a git clone (`deploy/charts/pulsys`). The chart
+> pulls public release images
+> [`ghcr.io/pulsys-io/pulsys`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys)
+> and
+> [`ghcr.io/pulsys-io/pulsys-console`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys-console)
+> (tags default to this chart's `appVersion`). By default it also deploys the
+> compose-equivalent **dev Keycloak** (OIDC login as `admin@pulsys.local` /
+> `admin`). After the first console image push, set the GHCR package visibility
+> to **Public** once (org packages default to private).
 
 ## TL;DR
 
 ```bash
-# Pulsys is authenticated by default. Provide an external Postgres and a Secret
-# holding a read-only Hugging Face token, then install:
+docker pull ghcr.io/pulsys-io/pulsys:0.1.4
+docker pull ghcr.io/pulsys-io/pulsys-console:0.1.4
+
 kubectl create secret generic pulsys-hf --from-literal=token=hf_your_readonly_token
 
 helm install pulsys ./deploy/charts/pulsys \
-  --set proxy.publicBaseURL=https://hf.example.com \
+  --set proxy.publicBaseURL=http://localhost:8082 \
   --set admin.enabled=true \
-  --set postgres.host=postgres.db.svc \
+  --set postgres.existingSecret=pulsys-pg-app \
+  --set postgres.existingSecretKey=uri \
   --set admin.imports.hfTokenSecret=pulsys-hf
 
-# Issue a Pulsys API key in the admin UI, then:
-HF_ENDPOINT=http://<proxy-host>:8080 HF_TOKEN=pulsys_... hf download gpt2
+kubectl port-forward svc/pulsys-console 3000:80 &
+kubectl port-forward svc/pulsys-keycloak 8081:8080 &
+kubectl port-forward svc/pulsys 8082:8080 &
+# Open http://localhost:3000 — admin@pulsys.local / admin
 ```
+
 
 ## Deployment requirements
 

@@ -3,6 +3,10 @@ templates:
   - templates/service.yaml
   - templates/pvc.yaml
   - templates/ingress.yaml
+set:
+  console.enabled: false
+  keycloak.enabled: false
+  oidc.enabled: false
 tests:
   - it: exposes data-plane and admin ports
     template: templates/service.yaml

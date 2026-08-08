@@ -68,6 +68,36 @@ The container image reference (tag defaults to appVersion).
 {{- printf "%s:%s" .Values.image.repository $tag -}}
 {{- end }}
 
+{{- define "pulsys.consoleImage" -}}
+{{- $tag := .Values.console.image.tag | default .Chart.AppVersion -}}
+{{- printf "%s:%s" .Values.console.image.repository $tag -}}
+{{- end }}
+
+{{- define "pulsys.consoleSelectorLabels" -}}
+app.kubernetes.io/name: {{ include "pulsys.name" . }}-console
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{- define "pulsys.keycloakSelectorLabels" -}}
+app.kubernetes.io/name: {{ include "pulsys.name" . }}-keycloak
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+Backchannel OIDC discovery base. When the chart's dev Keycloak is enabled and
+discoveryBase is empty, point at the in-cluster Keycloak Service (compose
+parity: browser issuer stays on localhost, JWKS uses the cluster DNS name).
+*/}}
+{{- define "pulsys.oidcDiscoveryBase" -}}
+{{- if .Values.oidc.discoveryBase -}}
+{{- .Values.oidc.discoveryBase -}}
+{{- else if and .Values.keycloak.enabled -}}
+{{- printf "http://%s-keycloak:%v/realms/pulsys" (include "pulsys.fullname" .) .Values.keycloak.service.port -}}
+{{- else -}}
+{{- .Values.oidc.issuer -}}
+{{- end -}}
+{{- end }}
+
 {{/*
 Name of the Secret holding the Postgres DSN. Uses an existing Secret when
 provided, otherwise the chart-managed Secret.

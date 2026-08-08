@@ -13,6 +13,10 @@ postgres:
   password: pulsys
   database: pulsys
   sslmode: require
+console:
+  enabled: false
+keycloak:
+  enabled: false
 oidc:
   enabled: true
   issuer: https://idp.example.com/realms/pulsys
