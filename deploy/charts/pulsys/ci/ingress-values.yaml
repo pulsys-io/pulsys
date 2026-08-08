@@ -13,6 +13,12 @@ postgres:
   password: pulsys
   database: pulsys
   sslmode: require
+console:
+  enabled: false
+keycloak:
+  enabled: false
+oidc:
+  enabled: false
 ingress:
   enabled: true
   className: nginx

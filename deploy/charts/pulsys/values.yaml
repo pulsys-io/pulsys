@@ -212,22 +212,86 @@ postgres:
   database: pulsys
   sslmode: require
 
-# OIDC for the admin console. Maps 1:1 to docs/oidc.md (Keycloak, AWS Cognito,
-# AWS IAM Identity Center). Stored in the database by the init Job.
+# Admin console (nginx + static SPA). Same role as compose `console` service.
+# Port-forward svc/<release>-console 3000:80 then open http://localhost:3000.
+console:
+  # -- Deploy the admin console (nginx + SPA). Proxies /auth and /admin to the
+  # pulsys admin port. Release images are published to GHCR alongside pulsys.
+  enabled: true
+  image:
+    # -- Console image repository (public release image).
+    repository: ghcr.io/pulsys-io/pulsys-console
+    # -- Image pull policy.
+    pullPolicy: IfNotPresent
+    # -- Image tag. Defaults to the chart's appVersion when empty.
+    tag: ""
+  service:
+    # -- Service type for the console.
+    type: ClusterIP
+    # -- Console HTTP port (container listens on 80).
+    port: 80
+  # -- Compute resources for the console pod.
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
+
+# Dev Keycloak (compose parity). LOCAL DEV ONLY — insecure default credentials.
+# Port-forward svc/<release>-keycloak 8081:8080 for the IdP login UI.
+keycloak:
+  # -- Deploy the compose-equivalent Keycloak (realm import + admin@pulsys.local).
+  enabled: true
+  image:
+    # -- Keycloak image repository.
+    repository: quay.io/keycloak/keycloak
+    # -- Keycloak image tag (keep in sync with compose.yaml).
+    tag: "26.0.5"
+    # -- Image pull policy.
+    pullPolicy: IfNotPresent
+  waitImage:
+    # -- Image used by the pulsys initContainer that waits for Keycloak readiness.
+    repository: busybox
+    tag: "1.37"
+    pullPolicy: IfNotPresent
+  # -- Browser-facing Keycloak base URL (KC_HOSTNAME). Must match port-forward.
+  hostname: http://localhost:8081
+  # -- Keycloak bootstrap admin username (console admin UI, not Pulsys).
+  adminUsername: admin
+  # -- Keycloak bootstrap admin password (LOCAL DEV ONLY).
+  adminPassword: admin
+  service:
+    # -- Service type for Keycloak.
+    type: ClusterIP
+    # -- Keycloak HTTP port.
+    port: 8080
+  # -- Compute resources for the Keycloak pod.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+
+# OIDC for the admin console. Defaults match compose (dev Keycloak + localhost
+# port-forwards). Stored in the database by the configure initContainer.
 oidc:
   # -- Enable OIDC login for the admin console.
-  enabled: false
+  enabled: true
   # -- OIDC issuer URL (browser-facing; validated against the id_token `iss`).
-  issuer: ""
+  issuer: "http://localhost:8081/realms/pulsys"
   # -- Backchannel discovery base used by the proxy to reach the IdP in-cluster
-  # (PULSYS_OIDC_DISCOVERY_BASE). Empty falls back to the issuer.
+  # (PULSYS_OIDC_DISCOVERY_BASE). Empty + keycloak.enabled uses the in-cluster
+  # Keycloak Service (compose parity).
   discoveryBase: ""
-  # -- OAuth redirect URI registered with the IdP.
-  redirectURI: ""
+  # -- OAuth redirect URI registered with the IdP (console port-forward :3000).
+  redirectURI: "http://localhost:3000/auth/oidc/callback"
   # -- OIDC client ID.
   clientID: pulsys-admin
   # -- OIDC client secret. Prefer existingSecret in production.
-  clientSecret: ""
+  # Compose / realm use a public PKCE client; this placeholder satisfies configure.
+  clientSecret: "public-dev-only"
   # -- Existing Secret holding the OIDC client secret under `client-secret`.
   existingSecret: ""
   # -- Group(s) mapped to the tenant owner role, comma-joined.

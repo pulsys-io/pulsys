@@ -1,57 +1,92 @@
-# Pulsys / pulsys Docker build context — keep images fast and small.
+# Pulsys Docker build context — deny-by-default allowlist.
 #
-# The compose Dockerfile only needs:
-#   go.mod, go.sum, cmd/, internal/          (Go binaries)
-#   admin-ui/package*.json, admin-ui/src/…   (static admin export)
-#   docker/                                   (nginx + init scripts + Keycloak import)
+# Only paths required by:
+#   docker/Dockerfile          (compose: init / pulsys / console)
+#   deploy/docker/Dockerfile   (from-source OSS image)
+#   Dockerfile.security-tests  (Linux security matrix)
+# enter the build context. Compose bind-mounts (e.g. Keycloak realm JSON)
+# read from the host filesystem and do NOT need to be in the image context.
 #
-# Everything else stays out of `COPY . .` and shrinks context transfer
-# (tmp/ alone is multi-GB on dev machines).
+# GoReleaser's runtime image uses deploy/docker/Dockerfile.goreleaser with a
+# tiny context of prebuilt binaries — it does not send the repo source tree.
 
-# --- VCS, CI, editor scratch ---
+# ---------------------------------------------------------------------------
+# Deny everything recursively, then re-include only what builds need.
+# ---------------------------------------------------------------------------
+**
+
+# --- Go module + compilable source (go:embed stays under internal/) ---
+!go.mod
+!go.sum
+!cmd/
+!cmd/**
+!internal/
+!internal/**
+
+# --- Admin UI: lockfiles + Next config + src only (no .env, tests, deps) ---
+!admin-ui/
+admin-ui/**
+!admin-ui/package.json
+!admin-ui/package-lock.json
+!admin-ui/next.config.ts
+!admin-ui/tsconfig.json
+!admin-ui/next-env.d.ts
+!admin-ui/src/
+!admin-ui/src/**
+
+# --- Runtime scripts + nginx for compose/console images ---
+# Intentionally omit docker/keycloak/ (dev realm with default password);
+# compose mounts it from the host: ./docker/keycloak/pulsys-realm.json
+!docker/
+docker/**
+!docker/nginx/
+!docker/nginx/**
+!docker/scripts/
+!docker/scripts/**
+
+# --- Security-tests entrypoint only (rest of scripts/ stays out) ---
+!scripts/
+scripts/**
+!scripts/security-tests-entrypoint.sh
+
+# ---------------------------------------------------------------------------
+# Belt-and-suspenders: never allow these even if a future ! rule widens scope.
+# Last matching pattern wins — keep these AFTER the allowlist.
+# ---------------------------------------------------------------------------
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.jks
+**/id_rsa*
+**/id_ed25519*
+**/id_ecdsa*
+**/*credential*
+**/*credentials*
+**/.aws/
+**/.config/gcloud/
+**/kubeconfig*
+**/*.kubeconfig
+**/*.tfstate
+**/*.tfstate.*
+**/.terraform/
+**/cdk.context.json
+**/cdk.out/
+**/*secret*.json
+**/node_modules/
+**/.next/
+# Root-only scratch dirs (do NOT use **/cache — that would drop internal/cache).
+/tmp
+/tmp/**
+/cache
+/cache/**
+/bin
+/bin/**
+admin-ui/out
+admin-ui/out/**
 .git
-.gitignore
 .github
 .cursor
-.DS_Store
-.idea
-.vscode
-
-# --- Unrelated repo areas (not compiled into Pulsys images) ---
-website
-infra
-docs
-scripts
-# Phase 4.5: re-include the security-tests entrypoint so
-# Dockerfile.security-tests can COPY it.  Everything else
-# under scripts/ stays excluded.
-!scripts/security-tests-entrypoint.sh
-compose.yaml
-Dockerfile.test
-LICENSE
-README.md
-
-# --- Bench / cache / local run artifacts ---
-tmp
-cache
-bin
-hfhub.test
-*.test
-*.prof
-*.pb.gz
-*.cover
-coverage.out
-
-# --- Node deps (never copied into Go images) ---
-node_modules
-
-# --- Admin UI: source only; deps and build output come from npm ci/build ---
-admin-ui/node_modules
-admin-ui/.next
-admin-ui/out
-admin-ui/.env*
-admin-ui/README.md
-
-# --- Archives and bulky downloads ---
-**/*.tar.gz
-**/*.zip
+**/.DS_Store

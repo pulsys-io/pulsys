@@ -2,6 +2,12 @@ suite: deployment
 templates:
   - templates/deployment.yaml
   - templates/configmap.yaml
+# Unit tests exercise the proxy Deployment without the compose-parity
+# console/Keycloak stack (those are covered by kind install / manual verify).
+set:
+  console.enabled: false
+  keycloak.enabled: false
+  oidc.enabled: false
 tests:
   - it: requires proxy.publicBaseURL
     template: templates/deployment.yaml

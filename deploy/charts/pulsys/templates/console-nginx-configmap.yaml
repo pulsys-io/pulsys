@@ -1,0 +1,46 @@
+{{- if and .Values.admin.enabled .Values.console.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pulsys.fullname" . }}-console-nginx
+  labels:
+    {{- include "pulsys.labels" . | nindent 4 }}
+    app.kubernetes.io/component: console
+data:
+  pulsys.conf: |
+    upstream pulsys_admin {
+        server {{ include "pulsys.fullname" . }}:{{ .Values.service.adminPort }};
+        keepalive 8;
+    }
+
+    server {
+        listen 80 default_server;
+        listen [::]:80 default_server;
+        server_name _;
+
+        client_max_body_size 32m;
+
+        location = /auth/oidc/config { proxy_pass http://pulsys_admin; include /etc/nginx/conf.d/pulsys_proxy_headers.inc; }
+        location = /auth/csrf        { proxy_pass http://pulsys_admin; include /etc/nginx/conf.d/pulsys_proxy_headers.inc; }
+        location = /auth/session     { proxy_pass http://pulsys_admin; include /etc/nginx/conf.d/pulsys_proxy_headers.inc; }
+        location = /auth/logout      { proxy_pass http://pulsys_admin; include /etc/nginx/conf.d/pulsys_proxy_headers.inc; }
+
+        location /admin/ {
+            include /etc/nginx/conf.d/pulsys_proxy_headers.inc;
+            proxy_pass http://pulsys_admin;
+        }
+
+        location = /metrics {
+            proxy_pass http://pulsys_admin;
+        }
+
+        location = /healthz {
+            proxy_pass http://pulsys_admin;
+        }
+
+        location / {
+            root /var/www/pulsys-admin;
+            try_files $uri $uri.html $uri/ /index.html;
+        }
+    }
+{{- end }}

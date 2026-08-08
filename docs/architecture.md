@@ -53,8 +53,15 @@ replicas is not supported; horizontal scale-out is a roadmap item
 
 Deploy paths:
 
-- Helm chart (JSON-schema-validated, kind-tested in CI):
-  [`deploy/charts/pulsys/`](../deploy/charts/pulsys/)
+- Local full stack (`docker compose up --build`): builds from
+  [`docker/Dockerfile`](../docker/Dockerfile) with Postgres, Keycloak, and the
+  admin console. This path does not pull GHCR.
+- Kubernetes: Helm chart in [`deploy/charts/pulsys/`](../deploy/charts/pulsys/)
+  (JSON-schema-validated, kind-tested in CI). The chart pulls the public images
+  [`ghcr.io/pulsys-io/pulsys`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys)
+  and
+  [`ghcr.io/pulsys-io/pulsys-console`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys-console),
+  and by default also runs compose-equivalent dev Keycloak for OIDC login.
 - Production topology and hardening: [`security.md`](security.md)
 
 ## Cache warming (import)

@@ -37,6 +37,19 @@ spec:
       # install hooks. `pulsys-db migrate up` takes a DB advisory lock, so it is
       # safe when pod starts overlap (extras see "no change").
       initContainers:
+        {{- if and .Values.oidc.enabled .Values.keycloak.enabled }}
+        - name: wait-keycloak
+          image: {{ printf "%s:%s" .Values.keycloak.waitImage.repository .Values.keycloak.waitImage.tag | quote }}
+          imagePullPolicy: {{ .Values.keycloak.waitImage.pullPolicy }}
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              url="{{ include "pulsys.oidcDiscoveryBase" . }}/.well-known/openid-configuration"
+              echo "waiting for keycloak at ${url}"
+              until wget -q -O /dev/null "${url}"; do sleep 2; done
+              echo "keycloak ready"
+        {{- end }}
         - name: migrate
           image: {{ include "pulsys.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -158,7 +171,7 @@ spec:
             {{- end }}
             {{- if .Values.oidc.enabled }}
             - name: PULSYS_OIDC_DISCOVERY_BASE
-              value: {{ .Values.oidc.discoveryBase | default .Values.oidc.issuer | quote }}
+              value: {{ include "pulsys.oidcDiscoveryBase" . | quote }}
             {{- end }}
             {{- end }}
             {{- with .Values.proxy.extraEnv }}

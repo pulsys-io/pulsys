@@ -10,24 +10,35 @@ Data plane (Hugging Face cache):
   {{- end }}
 {{- else if eq .Values.service.type "ClusterIP" }}
   In-cluster Service: {{ include "pulsys.fullname" . }}:{{ .Values.service.port }}
-  Port-forward to try it locally:
-    kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "pulsys.fullname" . }} 8080:{{ .Values.service.port }}
+  Port-forward (compose parity uses host :8082):
+    kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "pulsys.fullname" . }} 8082:{{ .Values.service.port }}
 {{- else }}
   Service type {{ .Values.service.type }} on port {{ .Values.service.port }}.
 {{- end }}
 
 Point the Hugging Face client at the proxy:
 
-    HF_ENDPOINT=http://<proxy-host>:{{ .Values.service.port }} hf download gpt2
+    HF_ENDPOINT=http://localhost:8082 hf download gpt2
 
 Admin plane (tenant: {{ .Values.admin.tenant }}) is enabled and required.
   - Admin/metrics port: {{ .Values.service.adminPort }} (/admin/api/v1, /metrics, /healthz)
-  - Every data-plane request requires a Bearer PAT (issue one via the admin API).
-  {{- if .Values.oidc.enabled }}
-  - OIDC login configured against issuer: {{ .Values.oidc.issuer }}
-  {{- else }}
+  - Every data-plane request requires a Bearer PAT (issue one via the admin console).
+{{- if and .Values.console.enabled }}
+  - Admin console:
+    kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "pulsys.fullname" . }}-console 3000:{{ .Values.console.service.port }}
+    Open http://localhost:3000
+{{- end }}
+{{- if and .Values.keycloak.enabled }}
+  - Dev Keycloak (LOCAL DEV ONLY):
+    kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "pulsys.fullname" . }}-keycloak 8081:{{ .Values.keycloak.service.port }}
+    Sign in with admin@pulsys.local / admin
+{{- end }}
+{{- if .Values.oidc.enabled }}
+  - OIDC issuer: {{ .Values.oidc.issuer }}
+  - Redirect URI: {{ .Values.oidc.redirectURI }}
+{{- else }}
   - OIDC is disabled; enable it with oidc.enabled=true for console login.
-  {{- end }}
+{{- end }}
 
 Verify the deployment:
     helm test {{ .Release.Name }} --namespace {{ .Release.Namespace }}

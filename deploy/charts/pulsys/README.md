@@ -1,6 +1,6 @@
 # pulsys
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.0](https://img.shields.io/badge/AppVersion-0.1.0-informational?style=flat-square)
+![Version: 0.1.5](https://img.shields.io/badge/Version-0.1.5-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.4](https://img.shields.io/badge/AppVersion-0.1.4-informational?style=flat-square)
 [![helm CI](https://github.com/pulsys-io/pulsys/actions/workflows/helm.yml/badge.svg)](https://github.com/pulsys-io/pulsys/actions/workflows/helm.yml)
 
 A high-performance Hugging Face disk-caching reverse proxy with a required Pulsys admin plane (OIDC, RBAC, audit, imports).
@@ -11,24 +11,35 @@ from a local cache at line rate. Pulsys is authenticated by default: the
 **Pulsys admin plane** (OIDC login, RBAC, audit log, model imports) is required,
 so every data-plane request carries a per-request Pulsys API key.
 
-> Install this chart from a git clone (`deploy/charts/pulsys`). Release
-> container images are published to `ghcr.io/pulsys-io/pulsys`.
+> Install this chart from a git clone (`deploy/charts/pulsys`). The chart
+> pulls public release images
+> [`ghcr.io/pulsys-io/pulsys`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys)
+> and
+> [`ghcr.io/pulsys-io/pulsys-console`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys-console)
+> (tags default to this chart's `appVersion`). By default it also deploys the
+> compose-equivalent **dev Keycloak** (OIDC login as `admin@pulsys.local` /
+> `admin`). After the first console image push, set the GHCR package visibility
+> to **Public** once (org packages default to private).
 
 ## TL;DR
 
 ```bash
-# Pulsys is authenticated by default. Provide an external Postgres and a Secret
-# holding a read-only Hugging Face token, then install:
+docker pull ghcr.io/pulsys-io/pulsys:0.1.4
+docker pull ghcr.io/pulsys-io/pulsys-console:0.1.4
+
 kubectl create secret generic pulsys-hf --from-literal=token=hf_your_readonly_token
 
 helm install pulsys ./deploy/charts/pulsys \
-  --set proxy.publicBaseURL=https://hf.example.com \
+  --set proxy.publicBaseURL=http://localhost:8082 \
   --set admin.enabled=true \
-  --set postgres.host=postgres.db.svc \
+  --set postgres.existingSecret=pulsys-pg-app \
+  --set postgres.existingSecretKey=uri \
   --set admin.imports.hfTokenSecret=pulsys-hf
 
-# Issue a Pulsys API key in the admin UI, then:
-HF_ENDPOINT=http://<proxy-host>:8080 HF_TOKEN=pulsys_... hf download gpt2
+kubectl port-forward svc/pulsys-console 3000:80 &
+kubectl port-forward svc/pulsys-keycloak 8081:8080 &
+kubectl port-forward svc/pulsys 8082:8080 &
+# Open http://localhost:3000 — admin@pulsys.local / admin
 ```
 
 ## Deployment requirements
@@ -98,6 +109,13 @@ Kubernetes: `>=1.27.0-0`
 | admin.init.enabled | bool | `true` | Run initContainers on the proxy Deployment that migrate the database, ensure the tenant, and (when oidc.enabled) configure the OIDC provider before the proxy starts. Migrations are lock-guarded and safe when pod starts overlap. |
 | admin.tenant | string | `"default"` | Tenant name used by the admin plane. |
 | affinity | object | `{}` | Affinity rules. |
+| console.enabled | bool | `true` | Deploy the admin console (nginx + SPA). Proxies /auth and /admin to the pulsys admin port. Release images are published to GHCR alongside pulsys. |
+| console.image.pullPolicy | string | `"IfNotPresent"` | Image pull policy. |
+| console.image.repository | string | `"ghcr.io/pulsys-io/pulsys-console"` | Console image repository (public release image). |
+| console.image.tag | string | `""` | Image tag. Defaults to the chart's appVersion when empty. |
+| console.resources | object | `{"limits":{"memory":"128Mi"},"requests":{"cpu":"25m","memory":"32Mi"}}` | Compute resources for the console pod. |
+| console.service.port | int | `80` | Console HTTP port (container listens on 80). |
+| console.service.type | string | `"ClusterIP"` | Service type for the console. |
 | fullnameOverride | string | `""` | Override the fully qualified app name. |
 | image.pullPolicy | string | `"IfNotPresent"` | Image pull policy. |
 | image.repository | string | `"ghcr.io/pulsys-io/pulsys"` | Container image repository for the pulsys binary. |
@@ -108,19 +126,32 @@ Kubernetes: `>=1.27.0-0`
 | ingress.enabled | bool | `false` | Create an Ingress for the data plane. |
 | ingress.hosts | list | `[{"host":"chart-example.local","paths":[{"path":"/","pathType":"Prefix"}]}]` | Ingress host rules. |
 | ingress.tls | list | `[]` | TLS configuration. |
+| keycloak.adminPassword | string | `"admin"` | Keycloak bootstrap admin password (LOCAL DEV ONLY). |
+| keycloak.adminUsername | string | `"admin"` | Keycloak bootstrap admin username (console admin UI, not Pulsys). |
+| keycloak.enabled | bool | `true` | Deploy the compose-equivalent Keycloak (realm import + admin@pulsys.local). |
+| keycloak.hostname | string | `"http://localhost:8081"` | Browser-facing Keycloak base URL (KC_HOSTNAME). Must match port-forward. |
+| keycloak.image.pullPolicy | string | `"IfNotPresent"` | Image pull policy. |
+| keycloak.image.repository | string | `"quay.io/keycloak/keycloak"` | Keycloak image repository. |
+| keycloak.image.tag | string | `"26.0.5"` | Keycloak image tag (keep in sync with compose.yaml). |
+| keycloak.resources | object | `{"limits":{"memory":"1Gi"},"requests":{"cpu":"100m","memory":"512Mi"}}` | Compute resources for the Keycloak pod. |
+| keycloak.service.port | int | `8080` | Keycloak HTTP port. |
+| keycloak.service.type | string | `"ClusterIP"` | Service type for Keycloak. |
+| keycloak.waitImage.pullPolicy | string | `"IfNotPresent"` |  |
+| keycloak.waitImage.repository | string | `"busybox"` | Image used by the pulsys initContainer that waits for Keycloak readiness. |
+| keycloak.waitImage.tag | string | `"1.37"` |  |
 | metrics.serviceMonitor.enabled | bool | `false` | Create a Prometheus Operator ServiceMonitor scraping /metrics on the admin port. |
 | metrics.serviceMonitor.interval | string | `"30s"` | Scrape interval. |
 | metrics.serviceMonitor.labels | object | `{}` | Extra labels for the ServiceMonitor (e.g. to match a Prometheus selector). |
 | nameOverride | string | `""` | Override the chart name. |
 | nodeSelector | object | `{}` | Node selector. |
 | oidc.clientID | string | `"pulsys-admin"` | OIDC client ID. |
-| oidc.clientSecret | string | `""` | OIDC client secret. Prefer existingSecret in production. |
-| oidc.discoveryBase | string | `""` | Backchannel discovery base used by the proxy to reach the IdP in-cluster (PULSYS_OIDC_DISCOVERY_BASE). Empty falls back to the issuer. |
-| oidc.enabled | bool | `false` | Enable OIDC login for the admin console. |
+| oidc.clientSecret | string | `"public-dev-only"` | OIDC client secret. Prefer existingSecret in production. Compose / realm use a public PKCE client; this placeholder satisfies configure. |
+| oidc.discoveryBase | string | `""` | Backchannel discovery base used by the proxy to reach the IdP in-cluster (PULSYS_OIDC_DISCOVERY_BASE). Empty + keycloak.enabled uses the in-cluster Keycloak Service (compose parity). |
+| oidc.enabled | bool | `true` | Enable OIDC login for the admin console. |
 | oidc.existingSecret | string | `""` | Existing Secret holding the OIDC client secret under `client-secret`. |
-| oidc.issuer | string | `""` | OIDC issuer URL (browser-facing; validated against the id_token `iss`). |
+| oidc.issuer | string | `"http://localhost:8081/realms/pulsys"` | OIDC issuer URL (browser-facing; validated against the id_token `iss`). |
 | oidc.ownerGroups | string | `"pulsys:owner"` | Group(s) mapped to the tenant owner role, comma-joined. |
-| oidc.redirectURI | string | `""` | OAuth redirect URI registered with the IdP. |
+| oidc.redirectURI | string | `"http://localhost:3000/auth/oidc/callback"` | OAuth redirect URI registered with the IdP (console port-forward :3000). |
 | persistence.accessModes | list | `["ReadWriteOnce"]` | Access modes for the cache PVC. |
 | persistence.annotations | object | `{}` | Extra annotations on the PVC. |
 | persistence.enabled | bool | `true` | Provision a PersistentVolumeClaim for the cache. |

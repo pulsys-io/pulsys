@@ -2,6 +2,10 @@ suite: admin plane secrets
 templates:
   - templates/db-secret.yaml
   - templates/oidc-secret.yaml
+set:
+  console.enabled: false
+  keycloak.enabled: false
+  oidc.enabled: false
 tests:
   - it: renders no db or OIDC Secret when the admin plane is disabled
     set:

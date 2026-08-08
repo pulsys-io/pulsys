@@ -1,0 +1,11 @@
+{{- if and .Values.admin.enabled .Values.keycloak.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pulsys.fullname" . }}-keycloak-realm
+  labels:
+    {{- include "pulsys.labels" . | nindent 4 }}
+    app.kubernetes.io/component: keycloak
+data:
+  {{- (.Files.Glob "files/pulsys-realm.json").AsConfig | nindent 2 }}
+{{- end }}
