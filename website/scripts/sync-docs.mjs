@@ -20,6 +20,55 @@ const DOC_META = {
   'internals.md': { title: 'Internals', description: 'Warm-path implementation and OS tuning' },
   'security.md': { title: 'Security', description: 'Credential model, parser hardening, and threat model' },
   'oidc.md': { title: 'OIDC / SSO', description: 'Keycloak, Cognito, and IAM Identity Center setup' },
+  'troubleshooting-hf-429.md': {
+    title: 'Fix Hugging Face 429 Too Many Requests',
+    description:
+      'Why huggingface_hub, datasets, and ollama downloads fail with HTTP 429 Client Error: Too Many Requests, and how to stop the Hub rate-limiting your IP or token.',
+    head: [
+      {
+        tag: 'script',
+        attrs: { type: 'application/ld+json' },
+        content: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: [
+            {
+              '@type': 'Question',
+              name: 'What does 429 Client Error: Too Many Requests mean on Hugging Face?',
+              acceptedAnswer: {
+                '@type': 'Answer',
+                text: 'The Hub is rate-limiting requests from your IP address or token. It is not a permission error and does not require Pro. It is triggered by too many file-download or metadata (HEAD) requests in a short window, usually from high parallelism or many machines sharing one IP.',
+              },
+            },
+            {
+              '@type': 'Question',
+              name: 'How do I fix HfHubHTTPError: 429 Too Many Requests?',
+              acceptedAnswer: {
+                '@type': 'Answer',
+                text: 'Set HF_TOKEN so requests use your account quota, upgrade huggingface_hub to 1.2 or later so 429s wait on the RateLimit header and retry, reduce max_workers, and prefetch once into a shared cache then load with local_files_only=True or HF_HUB_OFFLINE=1.',
+              },
+            },
+            {
+              '@type': 'Question',
+              name: 'Does upgrading to Hugging Face Pro fix 429 errors?',
+              acceptedAnswer: {
+                '@type': 'Answer',
+                text: 'Pro raises the rate-limit ceiling but does not remove it. An aggressive client with many parallel workers or an uncached fleet can still exceed a Pro account and receive 429 responses.',
+              },
+            },
+            {
+              '@type': 'Question',
+              name: 'How do I stop many machines from re-downloading the same model and hitting 429?',
+              acceptedAnswer: {
+                '@type': 'Answer',
+                text: 'Put a pull-through cache such as Pulsys in front of the Hub and point clients at it with HF_ENDPOINT. The first pull fills a local disk cache and every later pull is served from disk, so N machines re-downloading a model become a single upstream download.',
+              },
+            },
+          ],
+        }),
+      },
+    ],
+  },
 };
 
 const repoUrl = process.env.PUBLIC_REPO_URL ?? 'https://github.com/pulsys-io/pulsys';
@@ -50,14 +99,36 @@ function rewriteLinks(body) {
   return out;
 }
 
+/**
+ * Serialize a Starlight `head` array to YAML frontmatter lines.
+ * @param {Array<{tag: string, attrs?: Record<string, string>, content?: string}>} head
+ */
+function headToYaml(head) {
+  const lines = ['head:'];
+  for (const entry of head) {
+    lines.push(`  - tag: ${entry.tag}`);
+    if (entry.attrs) {
+      lines.push('    attrs:');
+      for (const [k, v] of Object.entries(entry.attrs)) {
+        lines.push(`      ${k}: ${JSON.stringify(v)}`);
+      }
+    }
+    if (entry.content != null) {
+      lines.push(`    content: ${JSON.stringify(entry.content)}`);
+    }
+  }
+  return lines.join('\n');
+}
+
 /** @param {string} name @param {string} raw */
 function withFrontmatter(name, raw) {
   const meta = DOC_META[name];
   if (!meta) return null;
   const body = rewriteLinks(raw.replace(/^# .+\n+/, (m) => m)); // keep H1 in body
+  const headBlock = meta.head ? `\n${headToYaml(meta.head)}` : '';
   return `---
 title: ${meta.title}
-description: ${meta.description}
+description: ${JSON.stringify(meta.description)}${headBlock}
 ---
 
 ${body.trim()}

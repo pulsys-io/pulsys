@@ -12,6 +12,7 @@ index is the map for everything else, grouped by what you are trying to do.
 | [`oidc.md`](oidc.md) | SSO setup for Keycloak, AWS Cognito, and IAM Identity Center, plus break-glass owner recovery. |
 | [`security.md`](security.md) | Credential model, parser hardening, threat model, deployment hardening, supply-chain posture. |
 | [`benchmarks.md`](benchmarks.md) | Headline numbers, the receipts, and how to reproduce them (local, Linux, EC2). |
+| [`troubleshooting-hf-429.md`](troubleshooting-hf-429.md) | Why Hugging Face downloads fail with `429 Too Many Requests`, the standard fixes, and when a shared cache is the fix. |
 
 ## Understand it (how it is built, and why)
 
