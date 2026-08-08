@@ -882,7 +882,7 @@ func (h *Handler) cacheableLocation(ctx context.Context, resp *upstream.Response
 	unranged.Del("Range")
 	fresh, err := h.up.Do(ctx, http.MethodGet, upstreamHost, path, rawQuery, unranged, nil)
 	if err != nil {
-		h.log.Warn("unranged resolve", "err", err,
+		h.log.Warn("unranged resolve", "err", logx.SanitizeValue(err.Error()),
 			"host", logx.SanitizeValue(upstreamHost), "path", logx.SanitizeValue(path))
 		return "", nil, false
 	}
