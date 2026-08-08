@@ -67,13 +67,14 @@ and
 (multi-arch; anonymous pull). Confirm them first if you like:
 
 ```bash
-docker pull ghcr.io/pulsys-io/pulsys:0.1.4
-docker pull ghcr.io/pulsys-io/pulsys-console:0.1.4
+docker pull ghcr.io/pulsys-io/pulsys:latest
+docker pull ghcr.io/pulsys-io/pulsys-console:latest
 # or: crane ls ghcr.io/pulsys-io/pulsys
 ```
 
-Install the chart from this repo. The chart defaults `image.tag` to its
-`appVersion` (`0.1.4`):
+Install the chart from this repo. Examples use the floating `:latest` tags;
+pin a release tag (or leave `image.tag` empty to use the chart's
+`appVersion`) when you want a fixed deploy:
 
 ```bash
 kubectl create secret generic pulsys-hf --from-literal=token=hf_your_readonly_token
@@ -83,6 +84,8 @@ helm install pulsys deploy/charts/pulsys \
   --set admin.enabled=true \
   --set postgres.host=postgres.db.svc \
   --set admin.imports.hfTokenSecret=pulsys-hf \
+  --set image.tag=latest \
+  --set console.image.tag=latest \
   --set persistence.size=200Gi
 ```
 
