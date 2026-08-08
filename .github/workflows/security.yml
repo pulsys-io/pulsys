@@ -95,6 +95,13 @@ jobs:
           if [ "${{ matrix.workspace }}" = website ]; then
             block_level=critical
           fi
+          # aws-cdk-lib bundles brace-expansion (inBundle: true), so npm
+          # overrides cannot reach it. GHSA-rgw5-rvv9-x895 needs 5.0.9 and
+          # the newest aws-cdk-lib still ships 5.0.8, so there is nothing
+          # to bump to; block only critical until AWS republishes.
+          if [ "${{ matrix.workspace }}" = infra/cdk ]; then
+            block_level=critical
+          fi
           npm audit --audit-level="${block_level}"
 
   trivy-fs:
