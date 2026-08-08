@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"unicode/utf8"
 )
 
 var sensitiveHeaderKeys = map[string]struct{}{
@@ -61,6 +62,39 @@ func New(level string) *slog.Logger {
 		},
 	})
 	return slog.New(h)
+}
+
+// maxLogValueLen caps a sanitized value. Request-derived strings are
+// attacker-sized; without a cap one request can bloat the log stream.
+const maxLogValueLen = 512
+
+// SanitizeValue makes a request-derived string safe to place in a log
+// record. Carriage returns and newlines are removed so a crafted path or
+// host cannot forge additional log lines, remaining control characters
+// are dropped, and the result is truncated on a rune boundary.
+//
+// The JSON handler returned by New already escapes control characters,
+// so this is defense in depth: it keeps the guarantee if the handler is
+// ever swapped for a text one, and it is what makes the sanitisation
+// visible to static analysis.
+func SanitizeValue(s string) string {
+	s = strings.ReplaceAll(s, "\r", "")
+	s = strings.ReplaceAll(s, "\n", "")
+	s = strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f {
+			return -1
+		}
+		return r
+	}, s)
+	if len(s) > maxLogValueLen {
+		// Cut on a rune boundary so the record stays valid UTF-8.
+		cut := maxLogValueLen
+		for cut > 0 && !utf8.RuneStart(s[cut]) {
+			cut--
+		}
+		s = s[:cut] + "...(truncated)"
+	}
+	return s
 }
 
 // ScrubURLString removes sensitive query parameters for logging.

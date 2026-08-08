@@ -6,6 +6,7 @@ package importer
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"runtime"
 	"strings"
 	"time"
@@ -27,6 +28,8 @@ type RiverConfig struct {
 	// JobTimeout caps a single import worker run. Zero uses 24h (River's
 	// default is 1m, which aborts large model warms with deadline exceeded).
 	JobTimeout time.Duration
+	// Log receives raw import failures. Nil falls back to slog.Default().
+	Log *slog.Logger
 }
 
 // RiverBundle holds a started River client and its worker registration.
@@ -60,6 +63,7 @@ func NewRiverBundle(ctx context.Context, cfg RiverConfig) (*RiverBundle, error) 
 	// JobUpdate from inside Work for eager progress persistence.
 	worker := &CacheImportWorker{
 		JobTimeout: cfg.JobTimeout,
+		Log:        cfg.Log,
 		Downloader: HFCacheDownloader{
 			Endpoint: cfg.LoopbackBaseURL,
 			Token:    strings.TrimSpace(cfg.HFToken),

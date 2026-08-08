@@ -41,6 +41,7 @@ import (
 	"github.com/pulsys-io/pulsys/internal/classify"
 	"github.com/pulsys-io/pulsys/internal/config"
 	"github.com/pulsys-io/pulsys/internal/hostallow"
+	"github.com/pulsys-io/pulsys/internal/logx"
 	"github.com/pulsys-io/pulsys/internal/rewrite"
 	"github.com/pulsys-io/pulsys/internal/telemetry"
 	"github.com/pulsys-io/pulsys/internal/upstream"
@@ -485,9 +486,11 @@ func (h *Handler) tryServeFromCache(w http.ResponseWriter, rangeHdr, keyHex stri
 	// This is the fast path for /resolve/main/<file>: HF returns 302 to
 	// cas-bridge; without cache every range issues a fresh upstream
 	// roundtrip just to read that same 302.  With this branch the warm
-	// path is one disk-meta read.  Range header is irrelevant on
-	// redirects -- the client carries it into the followed request to
-	// /_p/cas-bridge/... where the body is served from disk.
+	// path is one disk-meta read.  The requester's Range is not consulted
+	// here -- it is carried into the followed request to /_p/<cdn>/...,
+	// where the body is served from disk.  That only holds because
+	// cacheableLocation guarantees the stored Location is range-agnostic;
+	// a Range-pinned Xet signature must never reach this branch.
 	if cache.IsCacheableRedirectStatus(meta.StatusCode) && meta.Location != "" {
 		return h.serveCachedRedirect(w, meta)
 	}
@@ -777,7 +780,7 @@ func (h *Handler) forward(w http.ResponseWriter, r *http.Request, upstreamHost, 
 	// Location once collapses 911 redirect lookups (Qwen-7B at
 	// 16 MiB chunks) into a single upstream hit per file.
 	if meth == http.MethodGet && cache.IsCacheableRedirectStatus(resp.Status) {
-		h.cacheRedirect(w, resp, keyHex, upstreamHost, path, rawQuery, auth)
+		h.cacheRedirect(cctx, w, resp, keyHex, upstreamHost, path, rawQuery, auth, hdr)
 		if unlock != nil {
 			unlock()
 		}
@@ -796,12 +799,26 @@ func (h *Handler) forward(w http.ResponseWriter, r *http.Request, upstreamHost, 
 // disk and forwards the rewritten 30x to the client.  The on-disk meta
 // stores the upstream Location verbatim; we re-rewrite on every warm
 // hit so the cache survives proxy URL changes.
-func (h *Handler) cacheRedirect(w http.ResponseWriter, resp *upstream.Response, keyHex, upstreamHost, path, rawQuery, auth string) {
+//
+// reqHdr is the header set we sent upstream.  If it carried a Range, the
+// Location we just received may be range-pinned (see cacheableLocation)
+// and must not be the one we persist.
+func (h *Handler) cacheRedirect(ctx context.Context, w http.ResponseWriter, resp *upstream.Response, keyHex, upstreamHost, path, rawQuery, auth string, reqHdr http.Header) {
 	defer func() { _ = resp.Body.Close() }()
 	upstreamLoc := resp.Header.Get("Location")
 	if upstreamLoc == "" {
 		// Pathological: 30x without Location.  Don't cache; pass through.
 		h.streamMetadata(w, resp)
+		return
+	}
+	// The client keeps the Location we already rewrote into w.Header() --
+	// it is valid for the exact Range this request asked for.  What we
+	// persist has to be valid for *every* Range, which is a different URL.
+	cacheLoc, cacheHdr, ok := h.cacheableLocation(ctx, resp, upstreamHost, path, rawQuery, reqHdr)
+	if !ok {
+		// No range-agnostic Location available; forwarding an unusable
+		// entry to the next requester is worse than not caching at all.
+		h.forwardRedirect(w, resp)
 		return
 	}
 	if err := h.store.StoreRedirect(
@@ -810,14 +827,22 @@ func (h *Handler) cacheRedirect(w http.ResponseWriter, resp *upstream.Response, 
 		upstreamHost,
 		path,
 		rawQuery,
-		upstreamLoc,
-		resp.Header.Get("Content-Type"),
-		resp.Header.Get("ETag"),
-		pickPreservedHeaders(resp.Header),
+		cacheLoc,
+		cacheHdr.Get("Content-Type"),
+		cacheHdr.Get("ETag"),
+		pickPreservedHeaders(cacheHdr),
 	); err != nil {
 		h.log.Warn("store redirect", "err", err, "host", upstreamHost, "path", path)
 	}
-	h.maybeWriteRevAlias(http.MethodGet, upstreamHost, path, rawQuery, auth, keyHex, resp.Header)
+	h.maybeWriteRevAlias(http.MethodGet, upstreamHost, path, rawQuery, auth, keyHex, cacheHdr)
+	h.forwardRedirect(w, resp)
+}
+
+// forwardRedirect writes the 30x through to the client without touching
+// the cache.  copyAndRewriteHeaders already put the rewritten Location in
+// w.Header(); this response is correct for the requester even when it is
+// not safe to persist.
+func (h *Handler) forwardRedirect(w http.ResponseWriter, resp *upstream.Response) {
 	telemetry.IncMetadataUpstreamFetch()
 	// Discard any body bytes for accounting consistency; 30x bodies are
 	// usually empty but HF sometimes returns a short HTML/"Found" stub.
@@ -825,11 +850,56 @@ func (h *Handler) cacheRedirect(w http.ResponseWriter, resp *upstream.Response, 
 		n, _ := io.Copy(io.Discard, resp.Body)
 		telemetry.AddMetadataUpstreamBytes(n)
 	}
-	// copyAndRewriteHeaders already wrote the rewritten Location header
-	// into w.Header().  Set Content-Length: 0 so net/http frames the
-	// response cleanly and write the status.
+	// Set Content-Length: 0 so net/http frames the response cleanly.
 	w.Header().Set("Content-Length", "0")
 	w.WriteHeader(resp.Status)
+}
+
+// cacheableLocation returns a Location safe to replay for any Range,
+// together with the response headers it came from.
+//
+// Hugging Face signs Xet CDN redirects with a CloudFront policy that pins
+// the exact Range of the request that produced them:
+//
+//	"Condition":{"ByteRange":{"ExpectedHeader":"bytes=0-16777215"}}
+//
+// Our redirect cache is keyed without the Range header (deliberately --
+// see the keyHex construction in forward), so persisting a pinned URL
+// hands one chunk's signature to every other chunk, and the CDN answers
+// those with 403 "Auth failed: invalid range".  A 16 MiB-chunked import of
+// a Xet-backed repo fails a few hundred MB in, once the first redirect
+// lands on disk, and the 403 reaches the operator humanized as a rejected
+// HF token.
+//
+// A resolve issued with no Range comes back with no ByteRange condition
+// and is valid for every range, so when the originating request carried a
+// Range we spend one extra unranged resolve to get something cacheable.
+func (h *Handler) cacheableLocation(ctx context.Context, resp *upstream.Response, upstreamHost, path, rawQuery string, reqHdr http.Header) (string, http.Header, bool) {
+	if reqHdr.Get("Range") == "" {
+		return resp.Header.Get("Location"), resp.Header, true
+	}
+	unranged := reqHdr.Clone()
+	unranged.Del("Range")
+	fresh, err := h.up.Do(ctx, http.MethodGet, upstreamHost, path, rawQuery, unranged, nil)
+	if err != nil {
+		h.log.Warn("unranged resolve", "err", logx.SanitizeValue(err.Error()),
+			"host", logx.SanitizeValue(upstreamHost), "path", logx.SanitizeValue(path))
+		return "", nil, false
+	}
+	defer func() { _ = fresh.Body.Close() }()
+	loc := fresh.Header.Get("Location")
+	if !cache.IsCacheableRedirectStatus(fresh.Status) || loc == "" {
+		// Upstream served the unranged resolve as a body (or an error)
+		// instead of a redirect.  Close without draining -- a 200 here is
+		// the whole artifact and reading it would download the file twice.
+		h.log.Warn("unranged resolve not a redirect", "status", fresh.Status,
+			"host", logx.SanitizeValue(upstreamHost), "path", logx.SanitizeValue(path))
+		return "", nil, false
+	}
+	n, _ := io.Copy(io.Discard, io.LimitReader(fresh.Body, 64<<10))
+	telemetry.IncMetadataUpstreamFetch()
+	telemetry.AddMetadataUpstreamBytes(n)
+	return loc, fresh.Header, true
 }
 
 // streamCacheable is the unified "tee upstream bytes to disk + client"
