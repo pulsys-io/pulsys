@@ -17,17 +17,18 @@ so every data-plane request carries a per-request Pulsys API key.
 > pulls public release images
 > [`ghcr.io/pulsys-io/pulsys`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys)
 > and
-> [`ghcr.io/pulsys-io/pulsys-console`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys-console)
-> (tags default to this chart's `appVersion`). By default it also deploys the
-> compose-equivalent **dev Keycloak** (OIDC login as `admin@pulsys.local` /
+> [`ghcr.io/pulsys-io/pulsys-console`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys-console).
+> Empty `image.tag` / `console.image.tag` fall back to the chart's
+> `appVersion`; the examples below use `:latest`. By default it also deploys
+> the compose-equivalent **dev Keycloak** (OIDC login as `admin@pulsys.local` /
 > `admin`). After the first console image push, set the GHCR package visibility
 > to **Public** once (org packages default to private).
 
 ## TL;DR
 
 ```bash
-docker pull ghcr.io/pulsys-io/pulsys:0.1.4
-docker pull ghcr.io/pulsys-io/pulsys-console:0.1.4
+docker pull ghcr.io/pulsys-io/pulsys:latest
+docker pull ghcr.io/pulsys-io/pulsys-console:latest
 
 kubectl create secret generic pulsys-hf --from-literal=token=hf_your_readonly_token
 
@@ -36,7 +37,9 @@ helm install pulsys ./deploy/charts/pulsys \
   --set admin.enabled=true \
   --set postgres.existingSecret=pulsys-pg-app \
   --set postgres.existingSecretKey=uri \
-  --set admin.imports.hfTokenSecret=pulsys-hf
+  --set admin.imports.hfTokenSecret=pulsys-hf \
+  --set image.tag=latest \
+  --set console.image.tag=latest
 
 kubectl port-forward svc/pulsys-console 3000:80 &
 kubectl port-forward svc/pulsys-keycloak 8081:8080 &
