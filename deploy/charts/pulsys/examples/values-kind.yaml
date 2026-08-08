@@ -1,0 +1,21 @@
+# Copy-paste Kind install against published GHCR images.
+# See the Deploy section in the repo README.
+
+proxy:
+  publicBaseURL: http://localhost:8082
+
+admin:
+  enabled: true
+  imports:
+    hfTokenSecret: pulsys-hf
+
+postgres:
+  existingSecret: pulsys-pg-app
+  existingSecretKey: uri
+
+image:
+  tag: latest
+
+console:
+  image:
+    tag: latest

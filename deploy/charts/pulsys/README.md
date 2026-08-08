@@ -11,33 +11,34 @@ from a local cache at line rate. Pulsys is authenticated by default: the
 **Pulsys admin plane** (OIDC login, RBAC, audit log, model imports) is required,
 so every data-plane request carries a per-request Pulsys API key.
 
-> Install this chart from a git clone (`deploy/charts/pulsys`). The chart
-> pulls public release images
-> [`ghcr.io/pulsys-io/pulsys`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys)
+> Install from a git clone. Pulls
+> [`ghcr.io/pulsys-io/pulsys:latest`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys)
 > and
-> [`ghcr.io/pulsys-io/pulsys-console`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys-console).
-> Empty `image.tag` / `console.image.tag` fall back to the chart's
-> `appVersion`; the examples below use `:latest`. By default it also deploys
-> the compose-equivalent **dev Keycloak** (OIDC login as `admin@pulsys.local` /
-> `admin`). After the first console image push, set the GHCR package visibility
-> to **Public** once (org packages default to private).
+> [`ghcr.io/pulsys-io/pulsys-console:latest`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys-console).
+> Default install also runs a **dev Keycloak** (`admin@pulsys.local` /
+> `admin`). After the first console image push, set that GHCR package
+> visibility to **Public** once (org packages default to private).
 
 ## TL;DR
 
 ```bash
-docker pull ghcr.io/pulsys-io/pulsys:latest
-docker pull ghcr.io/pulsys-io/pulsys-console:latest
+git clone --recurse-submodules https://github.com/pulsys-io/pulsys.git
+cd pulsys
+export PULSYS_HF_TOKEN=hf_your_readonly_token
 
-kubectl create secret generic pulsys-hf --from-literal=token=hf_your_readonly_token
+kind create cluster --name pulsys
 
-helm install pulsys ./deploy/charts/pulsys \
-  --set proxy.publicBaseURL=http://localhost:8082 \
-  --set admin.enabled=true \
-  --set postgres.existingSecret=pulsys-pg-app \
-  --set postgres.existingSecretKey=uri \
-  --set admin.imports.hfTokenSecret=pulsys-hf \
-  --set image.tag=latest \
-  --set console.image.tag=latest
+kubectl apply --server-side -f \
+  https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.24/releases/cnpg-1.24.1.yaml
+kubectl -n cnpg-system rollout status deploy/cnpg-controller-manager --timeout=5m
+
+kubectl apply -f deploy/charts/pulsys/examples/cnpg-cluster-kind.yaml
+kubectl wait --for=condition=Ready cluster/pulsys-pg --timeout=5m
+
+kubectl create secret generic pulsys-hf --from-literal=token="$PULSYS_HF_TOKEN"
+
+helm upgrade --install pulsys deploy/charts/pulsys \
+  -f deploy/charts/pulsys/examples/values-kind.yaml
 
 kubectl port-forward svc/pulsys-console 3000:80 &
 kubectl port-forward svc/pulsys-keycloak 8081:8080 &
@@ -59,16 +60,22 @@ operator. See [`examples/cnpg-cluster.yaml`](examples/cnpg-cluster.yaml).
 
 ## Admin plane with CloudNativePG
 
-```bash
-# 1. Install the CNPG operator (once per cluster), then apply a Cluster:
-kubectl apply -f examples/cnpg-cluster.yaml
+Local Kind: use the TL;DR above
+([`examples/cnpg-cluster-kind.yaml`](examples/cnpg-cluster-kind.yaml) +
+[`examples/values-kind.yaml`](examples/values-kind.yaml)).
 
-# 2. Install the chart pointing at the CNPG-generated app Secret:
-helm install pulsys ./deploy/charts/pulsys \
+Production-shaped install (you bring your own IdP Secret):
+
+```bash
+kubectl apply -f examples/cnpg-cluster.yaml   # 3 instances
+
+helm upgrade --install pulsys . \
   --set proxy.publicBaseURL=https://hf.example.com \
   --set admin.enabled=true \
   --set postgres.existingSecret=pulsys-pg-app \
   --set postgres.existingSecretKey=uri \
+  --set admin.imports.hfTokenSecret=pulsys-hf \
+  --set keycloak.enabled=false \
   --set oidc.enabled=true \
   --set oidc.issuer=https://idp.example.com/realms/pulsys \
   --set oidc.redirectURI=https://hf.example.com/auth/oidc/callback \

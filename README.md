@@ -60,45 +60,38 @@ work unchanged.
 
 ## Deploy
 
-Kubernetes installs use the public release images
-[`ghcr.io/pulsys-io/pulsys`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys)
-and
-[`ghcr.io/pulsys-io/pulsys-console`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys-console)
-(multi-arch; anonymous pull). Confirm them first if you like:
+Pulls `ghcr.io/pulsys-io/pulsys:latest` and
+`ghcr.io/pulsys-io/pulsys-console:latest`. Needs
+[Kind](https://kind.sigs.k8s.io/), Helm, and a Hugging Face read token.
 
 ```bash
-docker pull ghcr.io/pulsys-io/pulsys:latest
-docker pull ghcr.io/pulsys-io/pulsys-console:latest
-# or: crane ls ghcr.io/pulsys-io/pulsys
+git clone --recurse-submodules https://github.com/pulsys-io/pulsys.git
+cd pulsys
+export PULSYS_HF_TOKEN=hf_your_readonly_token
+
+kind create cluster --name pulsys
+
+kubectl apply --server-side -f \
+  https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.24/releases/cnpg-1.24.1.yaml
+kubectl -n cnpg-system rollout status deploy/cnpg-controller-manager --timeout=5m
+
+kubectl apply -f deploy/charts/pulsys/examples/cnpg-cluster-kind.yaml
+kubectl wait --for=condition=Ready cluster/pulsys-pg --timeout=5m
+
+kubectl create secret generic pulsys-hf --from-literal=token="$PULSYS_HF_TOKEN"
+
+helm upgrade --install pulsys deploy/charts/pulsys \
+  -f deploy/charts/pulsys/examples/values-kind.yaml
+
+kubectl port-forward svc/pulsys-console 3000:80 &
+kubectl port-forward svc/pulsys-keycloak 8081:8080 &
+kubectl port-forward svc/pulsys 8082:8080 &
 ```
 
-Install the chart from this repo. Examples use the floating `:latest` tags;
-pin a release tag (or leave `image.tag` empty to use the chart's
-`appVersion`) when you want a fixed deploy:
+Open http://localhost:3000 — `admin@pulsys.local` / `admin`.
+Proxy: http://localhost:8082.
 
-```bash
-kubectl create secret generic pulsys-hf --from-literal=token=hf_your_readonly_token
-
-helm install pulsys deploy/charts/pulsys \
-  --set proxy.publicBaseURL=https://hf.example.com \
-  --set admin.enabled=true \
-  --set postgres.host=postgres.db.svc \
-  --set admin.imports.hfTokenSecret=pulsys-hf \
-  --set image.tag=latest \
-  --set console.image.tag=latest \
-  --set persistence.size=200Gi
-```
-
-To build the image yourself instead:
-`docker build -t pulsys:local -f deploy/docker/Dockerfile .`, then set
-`image.repository` / `image.tag` accordingly.
-
-Pulsys runs as a single proxy instance backed by an external PostgreSQL.
-Multi-node clustering is on the [roadmap](ROADMAP.md).
-
-- Chart values: [`deploy/charts/pulsys/`](deploy/charts/pulsys/)
-- SSO setup: [`docs/oidc.md`](docs/oidc.md)
-- Hardening: [`docs/security.md`](docs/security.md)
+More chart options: [`deploy/charts/pulsys/`](deploy/charts/pulsys/).
 
 ## Documentation
 

@@ -1,0 +1,28 @@
+# Maintainer / pre-release Kind install when pulsys-console is not on GHCR yet.
+# Build and load the console, then:
+#
+#   docker build -f docker/Dockerfile --target console -t pulsys-console:local .
+#   kind load docker-image pulsys-console:local --name pulsys
+#   helm upgrade --install pulsys deploy/charts/pulsys \
+#     -f deploy/charts/pulsys/examples/values-kind-local.yaml
+
+proxy:
+  publicBaseURL: http://localhost:8082
+
+admin:
+  enabled: true
+  imports:
+    hfTokenSecret: pulsys-hf
+
+postgres:
+  existingSecret: pulsys-pg-app
+  existingSecretKey: uri
+
+image:
+  tag: latest
+
+console:
+  image:
+    repository: pulsys-console
+    tag: local
+    pullPolicy: Never
