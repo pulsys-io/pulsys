@@ -1,0 +1,50 @@
+# Local Kind install (compose parity: console + dev Keycloak + localhost
+# port-forwards). Prerequisites:
+#
+#   1. Kind cluster + CNPG Cluster (see cnpg-cluster-kind.yaml)
+#   2. kubectl create secret generic pulsys-hf --from-literal=token="$PULSYS_HF_TOKEN"
+#   3. Build and load the console image (not on GHCR until a release ships it):
+#        docker build -f docker/Dockerfile --target console -t pulsys-console:local .
+#        kind load docker-image pulsys-console:local --name pulsys
+#
+#   helm upgrade --install pulsys deploy/charts/pulsys \
+#     -f deploy/charts/pulsys/examples/values-kind-local.yaml
+#
+#   kubectl port-forward svc/pulsys-console 3000:80 &
+#   kubectl port-forward svc/pulsys-keycloak 8081:8080 &
+#   kubectl port-forward svc/pulsys 8082:8080 &
+
+proxy:
+  publicBaseURL: http://localhost:8082
+
+admin:
+  enabled: true
+  imports:
+    hfTokenSecret: pulsys-hf
+
+postgres:
+  existingSecret: pulsys-pg-app
+  existingSecretKey: uri
+
+image:
+  repository: ghcr.io/pulsys-io/pulsys
+  tag: latest
+  pullPolicy: IfNotPresent
+
+console:
+  enabled: true
+  image:
+    repository: pulsys-console
+    tag: local
+    pullPolicy: Never
+
+keycloak:
+  enabled: true
+
+oidc:
+  enabled: true
+  issuer: http://localhost:8081/realms/pulsys
+  redirectURI: http://localhost:3000/auth/oidc/callback
+  clientID: pulsys-admin
+  clientSecret: public-dev-only
+  ownerGroups: pulsys:owner

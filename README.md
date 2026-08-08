@@ -58,47 +58,50 @@ hf download Qwen/Qwen2.5-0.5B        # first run fills the cache; next run is se
 `huggingface_hub`, `transformers`, `datasets`, the `hf` CLI, and `hf_transfer`
 work unchanged.
 
-## Deploy
+## Deploy (Kind, local)
 
-Kubernetes installs use the public release images
-[`ghcr.io/pulsys-io/pulsys`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys)
-and
-[`ghcr.io/pulsys-io/pulsys-console`](https://github.com/pulsys-io/pulsys/pkgs/container/pulsys-console)
-(multi-arch; anonymous pull). Confirm them first if you like:
+The chart needs an external Postgres (CNPG), a Hugging Face token Secret, and
+— until a release publishes it — a locally built console image. From a clone:
 
 ```bash
-docker pull ghcr.io/pulsys-io/pulsys:latest
-docker pull ghcr.io/pulsys-io/pulsys-console:latest
-# or: crane ls ghcr.io/pulsys-io/pulsys
+kind create cluster --name pulsys
+
+kubectl apply --server-side -f \
+  https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.24/releases/cnpg-1.24.1.yaml
+kubectl -n cnpg-system rollout status deploy/cnpg-controller-manager --timeout=5m
+
+kubectl apply -f deploy/charts/pulsys/examples/cnpg-cluster-kind.yaml
+kubectl wait --for=condition=Ready cluster/pulsys-pg --timeout=5m
+
+export PULSYS_HF_TOKEN=hf_your_readonly_token
+kubectl create secret generic pulsys-hf --from-literal=token="$PULSYS_HF_TOKEN"
+
+docker build -f docker/Dockerfile --target console -t pulsys-console:local .
+kind load docker-image pulsys-console:local --name pulsys
+
+helm upgrade --install pulsys deploy/charts/pulsys \
+  -f deploy/charts/pulsys/examples/values-kind-local.yaml
+
+kubectl rollout status deploy/pulsys --timeout=3m
+kubectl rollout status deploy/pulsys-console --timeout=3m
+kubectl rollout status deploy/pulsys-keycloak --timeout=3m
+
+kubectl port-forward svc/pulsys-console 3000:80 &
+kubectl port-forward svc/pulsys-keycloak 8081:8080 &
+kubectl port-forward svc/pulsys 8082:8080 &
 ```
 
-Install the chart from this repo. Examples use the floating `:latest` tags;
-pin a release tag (or leave `image.tag` empty to use the chart's
-`appVersion`) when you want a fixed deploy:
+Open http://localhost:3000 and sign in as `admin@pulsys.local` / `admin`.
+Proxy is on http://localhost:8082 (`HF_ENDPOINT`).
 
-```bash
-kubectl create secret generic pulsys-hf --from-literal=token=hf_your_readonly_token
+`values-kind-local.yaml` pulls `ghcr.io/pulsys-io/pulsys:latest` and loads
+the console from the Kind node (`pulsys-console:local`). After a release
+publishes `ghcr.io/pulsys-io/pulsys-console`, you can switch the console
+image to that registry tag instead of building it.
 
-helm install pulsys deploy/charts/pulsys \
-  --set proxy.publicBaseURL=https://hf.example.com \
-  --set admin.enabled=true \
-  --set postgres.host=postgres.db.svc \
-  --set admin.imports.hfTokenSecret=pulsys-hf \
-  --set image.tag=latest \
-  --set console.image.tag=latest \
-  --set persistence.size=200Gi
-```
-
-To build the image yourself instead:
-`docker build -t pulsys:local -f deploy/docker/Dockerfile .`, then set
-`image.repository` / `image.tag` accordingly.
-
-Pulsys runs as a single proxy instance backed by an external PostgreSQL.
-Multi-node clustering is on the [roadmap](ROADMAP.md).
-
-- Chart values: [`deploy/charts/pulsys/`](deploy/charts/pulsys/)
-- SSO setup: [`docs/oidc.md`](docs/oidc.md)
-- Hardening: [`docs/security.md`](docs/security.md)
+Chart values, CNPG examples, and production notes:
+[`deploy/charts/pulsys/`](deploy/charts/pulsys/). SSO: [`docs/oidc.md`](docs/oidc.md).
+Hardening: [`docs/security.md`](docs/security.md).
 
 ## Documentation
 

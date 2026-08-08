@@ -24,22 +24,26 @@ so every data-plane request carries a per-request Pulsys API key.
 > `admin`). After the first console image push, set the GHCR package visibility
 > to **Public** once (org packages default to private).
 
-## TL;DR
+## TL;DR (Kind, local)
 
 ```bash
-docker pull ghcr.io/pulsys-io/pulsys:latest
-docker pull ghcr.io/pulsys-io/pulsys-console:latest
+kind create cluster --name pulsys
 
-kubectl create secret generic pulsys-hf --from-literal=token=hf_your_readonly_token
+kubectl apply --server-side -f \
+  https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.24/releases/cnpg-1.24.1.yaml
+kubectl -n cnpg-system rollout status deploy/cnpg-controller-manager --timeout=5m
 
-helm install pulsys ./deploy/charts/pulsys \
-  --set proxy.publicBaseURL=http://localhost:8082 \
-  --set admin.enabled=true \
-  --set postgres.existingSecret=pulsys-pg-app \
-  --set postgres.existingSecretKey=uri \
-  --set admin.imports.hfTokenSecret=pulsys-hf \
-  --set image.tag=latest \
-  --set console.image.tag=latest
+kubectl apply -f deploy/charts/pulsys/examples/cnpg-cluster-kind.yaml
+kubectl wait --for=condition=Ready cluster/pulsys-pg --timeout=5m
+
+kubectl create secret generic pulsys-hf --from-literal=token="$PULSYS_HF_TOKEN"
+
+# Console image is not on GHCR until a release ships it — build + load.
+docker build -f docker/Dockerfile --target console -t pulsys-console:local .
+kind load docker-image pulsys-console:local --name pulsys
+
+helm upgrade --install pulsys deploy/charts/pulsys \
+  -f deploy/charts/pulsys/examples/values-kind-local.yaml
 
 kubectl port-forward svc/pulsys-console 3000:80 &
 kubectl port-forward svc/pulsys-keycloak 8081:8080 &
@@ -62,16 +66,22 @@ operator. See [`examples/cnpg-cluster.yaml`](examples/cnpg-cluster.yaml).
 
 ## Admin plane with CloudNativePG
 
-```bash
-# 1. Install the CNPG operator (once per cluster), then apply a Cluster:
-kubectl apply -f examples/cnpg-cluster.yaml
+Local Kind: use [`examples/cnpg-cluster-kind.yaml`](examples/cnpg-cluster-kind.yaml)
+(1 instance) and [`examples/values-kind-local.yaml`](examples/values-kind-local.yaml)
+as in the TL;DR above (dev Keycloak is enabled by default).
 
-# 2. Install the chart pointing at the CNPG-generated app Secret:
-helm install pulsys ./deploy/charts/pulsys \
+Production-shaped install (you bring your own IdP Secret):
+
+```bash
+kubectl apply -f examples/cnpg-cluster.yaml   # 3 instances
+
+helm upgrade --install pulsys . \
   --set proxy.publicBaseURL=https://hf.example.com \
   --set admin.enabled=true \
   --set postgres.existingSecret=pulsys-pg-app \
   --set postgres.existingSecretKey=uri \
+  --set admin.imports.hfTokenSecret=pulsys-hf \
+  --set keycloak.enabled=false \
   --set oidc.enabled=true \
   --set oidc.issuer=https://idp.example.com/realms/pulsys \
   --set oidc.redirectURI=https://hf.example.com/auth/oidc/callback \

@@ -1,0 +1,21 @@
+# Single-instance CNPG Cluster for local Kind. For a real cluster use
+# cnpg-cluster.yaml (3 instances).
+#
+#   kubectl apply --server-side -f \
+#     https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.24/releases/cnpg-1.24.1.yaml
+#   kubectl -n cnpg-system rollout status deploy/cnpg-controller-manager --timeout=5m
+#   kubectl apply -f cnpg-cluster-kind.yaml
+#   kubectl wait --for=condition=Ready cluster/pulsys-pg --timeout=5m
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pulsys-pg
+spec:
+  instances: 1
+  storage:
+    size: 1Gi
+  bootstrap:
+    initdb:
+      database: pulsys
+      owner: pulsys
