@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -30,6 +31,12 @@ type CacheImportWorker struct {
 	// tests that don't wire a client fall back to RecordOutput, which
 	// is still correct for terminal state assertions.
 	Client *river.Client[pgx.Tx]
+	// Log receives the raw download error. HumanizeImportError rewrites
+	// the message for the admin UI and discards the original, so without
+	// this the operator-facing detail (upstream status + response body)
+	// is unrecoverable -- an upstream "403 Auth failed: invalid range"
+	// and a genuinely bad token both surface as the same UI string.
+	Log *slog.Logger
 }
 
 const defaultImportJobTimeout = 24 * time.Hour
@@ -85,6 +92,16 @@ func (w *CacheImportWorker) Work(ctx context.Context, job *river.Job[CacheImport
 		if isImportCanceled(ctx, err) {
 			return river.JobCancel(importCancelErr(ctx, err))
 		}
+		w.logger().Warn("import failed",
+			"err", err,
+			"job_id", job.ID,
+			"attempt", job.Attempt,
+			"repo", spec.RepoID,
+			"revision", spec.Revision,
+			"status", errStatus(err),
+			"bytes_done", latest.BytesDone,
+			"bytes_total", latest.BytesTotal,
+		)
 		if isQuotaHTTPError(err) {
 			return HumanizeImportError(fmt.Errorf("cache storage quota exceeded; purge unused models on /models or raise -cache-max-bytes"))
 		}
@@ -101,6 +118,23 @@ func (w *CacheImportWorker) Work(ctx context.Context, job *river.Job[CacheImport
 	latest.UpdatedAt = time.Now().UTC()
 	_ = river.RecordOutput(ctx, latest)
 	return nil
+}
+
+func (w *CacheImportWorker) logger() *slog.Logger {
+	if w.Log != nil {
+		return w.Log
+	}
+	return slog.Default()
+}
+
+// errStatus reports the upstream HTTP status carried by err, or 0 when
+// the failure wasn't an HTTP response (network, disk, context).
+func errStatus(err error) int {
+	var statusErr httpStatusError
+	if errors.As(err, &statusErr) {
+		return statusErr.Status()
+	}
+	return 0
 }
 
 func (w *CacheImportWorker) progressEvery() time.Duration {

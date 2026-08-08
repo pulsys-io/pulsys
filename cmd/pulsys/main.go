@@ -185,6 +185,7 @@ func main() {
 			MaxWorkers:      importWorkers,
 			WorkerEnabled:   importWorkerEnabled(),
 			JobTimeout:      importJobTimeout,
+			Log:             log,
 		})
 		if err != nil {
 			log.Error("river init", "err", err)

@@ -37,6 +37,12 @@ var contentAddressedHosts = map[string]struct{}{
 	"cdn-lfs-us-2.hf.co":      {},
 	"cdn-lfs-eu-1.hf.co":      {},
 	"lfs.huggingface.co":      {},
+	// Regional Xet bridge CDNs. HF resolves Xet-backed repos to these
+	// today (`us.aws.cdn.hf.co/xet-bridge-us/<cas-hash>`); omitting them
+	// keys every presign into its own slot and re-downloads whole bodies.
+	"us.aws.cdn.hf.co": {},
+	"eu.aws.cdn.hf.co": {},
+	"ap.aws.cdn.hf.co": {},
 }
 
 // IsContentAddressedHost reports whether host's URLs identify content
