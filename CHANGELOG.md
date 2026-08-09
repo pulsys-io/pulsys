@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.5](https://github.com/pulsys-io/pulsys/compare/v0.1.4...v0.1.5) (2026-08-09)
+
+
+### Features
+
+* **helm:** ship the admin console and a dev Keycloak in the chart ([#37](https://github.com/pulsys-io/pulsys/issues/37)) ([cb8f173](https://github.com/pulsys-io/pulsys/commit/cb8f1736c51d56255b19191c286f8080993e7891))
+
+
+### Bug Fixes
+
+* **proxy:** cache a Range-agnostic redirect for HF CDN downloads ([#36](https://github.com/pulsys-io/pulsys/issues/36)) ([3632938](https://github.com/pulsys-io/pulsys/commit/36329384ffab0a17042788171b32805382f750c9))
+
+
+### Documentation
+
+* make Deploy a copy-paste Kind install against GHCR latest ([#45](https://github.com/pulsys-io/pulsys/issues/45)) ([dd1a4c3](https://github.com/pulsys-io/pulsys/commit/dd1a4c390bd2b1bf81712d63d296e071ddbab5e5))
+* use :latest in install examples instead of pinned patch tags ([#44](https://github.com/pulsys-io/pulsys/issues/44)) ([007f3ab](https://github.com/pulsys-io/pulsys/commit/007f3ab69541e6be43ac481ef55f02da5164058f))
+
 ## [0.1.4](https://github.com/pulsys-io/pulsys/compare/v0.1.3...v0.1.4) (2026-07-14)
 
 
