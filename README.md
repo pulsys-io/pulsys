@@ -65,8 +65,6 @@ Pulls `ghcr.io/pulsys-io/pulsys:latest` and
 [Kind](https://kind.sigs.k8s.io/), Helm, and a Hugging Face read token.
 
 ```bash
-git clone --recurse-submodules https://github.com/pulsys-io/pulsys.git
-cd pulsys
 export PULSYS_HF_TOKEN=hf_your_readonly_token
 
 kind create cluster --name pulsys
