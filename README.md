@@ -81,6 +81,9 @@ kubectl create secret generic pulsys-hf --from-literal=token="$PULSYS_HF_TOKEN"
 helm upgrade --install pulsys deploy/charts/pulsys \
   -f deploy/charts/pulsys/examples/values-kind.yaml
 
+kubectl wait --for=condition=available --timeout=5m \
+  deploy/pulsys deploy/pulsys-console deploy/pulsys-keycloak
+
 kubectl port-forward svc/pulsys-console 3000:80 &
 kubectl port-forward svc/pulsys-keycloak 8081:8080 &
 kubectl port-forward svc/pulsys 8082:8080 &
