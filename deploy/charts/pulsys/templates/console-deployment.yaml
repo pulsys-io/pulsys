@@ -16,9 +16,7 @@ spec:
       annotations:
         checksum/nginx: {{ include (print $.Template.BasePath "/console-nginx-configmap.yaml") . | sha256sum }}
       labels:
-        {{- include "pulsys.labels" . | nindent 8 }}
-        app.kubernetes.io/component: console
-        {{- include "pulsys.consoleSelectorLabels" . | nindent 8 }}
+        {{- include "pulsys.consoleLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:

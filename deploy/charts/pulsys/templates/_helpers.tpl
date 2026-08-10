@@ -84,6 +84,34 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Component labels. Same shape as pulsys.labels but with the component's
+selectorLabels instead of the chart-wide ones, so the emitted map has a
+single `app.kubernetes.io/name` (matching the selector). Used on pod-template
+metadata.labels to avoid duplicate keys that strict YAML consumers reject.
+*/}}
+{{- define "pulsys.consoleLabels" -}}
+helm.sh/chart: {{ include "pulsys.chart" . }}
+{{ include "pulsys.consoleSelectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/part-of: pulsys
+app.kubernetes.io/component: console
+{{- end }}
+
+{{- define "pulsys.keycloakLabels" -}}
+helm.sh/chart: {{ include "pulsys.chart" . }}
+{{ include "pulsys.keycloakSelectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/part-of: pulsys
+app.kubernetes.io/component: keycloak
+{{- end }}
+
+{{/*
 Backchannel OIDC discovery base. When the chart's dev Keycloak is enabled and
 discoveryBase is empty, point at the in-cluster Keycloak Service (compose
 parity: browser issuer stays on localhost, JWKS uses the cluster DNS name).
