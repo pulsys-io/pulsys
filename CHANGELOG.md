@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/pulsys-io/pulsys/compare/v0.1.5...v0.1.6) (2026-08-10)
+
+
+### Bug Fixes
+
+* **chart:** remove duplicate app.kubernetes.io/{name,instance} in pod template labels ([#47](https://github.com/pulsys-io/pulsys/issues/47)) ([b21522f](https://github.com/pulsys-io/pulsys/commit/b21522f2ebefd480e8a5d0a86e6834a969638c45))
+
 ## [0.1.5](https://github.com/pulsys-io/pulsys/compare/v0.1.4...v0.1.5) (2026-08-09)
 
 
