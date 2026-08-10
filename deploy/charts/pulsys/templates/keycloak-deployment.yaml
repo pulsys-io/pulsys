@@ -14,9 +14,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "pulsys.labels" . | nindent 8 }}
-        app.kubernetes.io/component: keycloak
-        {{- include "pulsys.keycloakSelectorLabels" . | nindent 8 }}
+        {{- include "pulsys.keycloakLabels" . | nindent 8 }}
     spec:
       containers:
         - name: keycloak
