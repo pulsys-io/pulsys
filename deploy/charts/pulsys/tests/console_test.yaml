@@ -1,0 +1,56 @@
+suite: console deployment
+templates:
+  - templates/console-deployment.yaml
+  - templates/console-nginx-configmap.yaml
+# Regression for #46: pod-template labels must not emit duplicate
+# app.kubernetes.io/{name,instance} keys (Flux/kubectl strict YAML rejects them).
+set:
+  proxy.publicBaseURL: https://hf.example.com
+  admin.enabled: true
+  admin.imports.hfTokenSecret: pulsys-hf
+  postgres.host: pg
+  postgres.password: test
+  console.enabled: true
+  keycloak.enabled: false
+  oidc.enabled: false
+tests:
+  - it: renders a console Deployment when admin+console are enabled
+    template: templates/console-deployment.yaml
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-pulsys-console
+
+  - it: pod template labels use a single selector-aligned app.kubernetes.io/name
+    template: templates/console-deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/name"]
+          value: pulsys-console
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/component"]
+          value: console
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/name"]
+          value: pulsys-console
+      - isSubset:
+          path: spec.template.metadata.labels
+          content:
+            app.kubernetes.io/name: pulsys-console
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/component: console
+            app.kubernetes.io/part-of: pulsys
+            app.kubernetes.io/managed-by: Helm
+
+  - it: omits the console Deployment when console is disabled
+    template: templates/console-deployment.yaml
+    set:
+      console.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
