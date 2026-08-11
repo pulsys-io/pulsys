@@ -4,7 +4,7 @@ description: A high-performance Hugging Face disk-caching reverse proxy with a r
 type: application
 # version  -> chart SemVer; bumped by chart-releaser/release tooling.
 # appVersion -> the pulsys container image tag this chart targets.
-version: 0.1.5
+version: 0.1.6
 appVersion: "0.1.4"
 kubeVersion: ">=1.27.0-0"
 icon: https://pulsys.io/logo.svg

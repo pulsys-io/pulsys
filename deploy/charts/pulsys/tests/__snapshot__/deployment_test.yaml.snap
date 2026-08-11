@@ -18,7 +18,7 @@ matches the managed snapshot:
         app.kubernetes.io/name: pulsys
         app.kubernetes.io/part-of: pulsys
         app.kubernetes.io/version: 0.1.4
-        helm.sh/chart: pulsys-0.1.5
+        helm.sh/chart: pulsys-0.1.6
       name: RELEASE-NAME-pulsys
   2: |
     apiVersion: apps/v1
@@ -30,7 +30,7 @@ matches the managed snapshot:
         app.kubernetes.io/name: pulsys
         app.kubernetes.io/part-of: pulsys
         app.kubernetes.io/version: 0.1.4
-        helm.sh/chart: pulsys-0.1.5
+        helm.sh/chart: pulsys-0.1.6
       name: RELEASE-NAME-pulsys
     spec:
       replicas: 1
@@ -41,14 +41,14 @@ matches the managed snapshot:
       template:
         metadata:
           annotations:
-            checksum/config: 335c0b3ed4ce30a1feae383bfc1b34f84982f5a7502ace9e19c63f7b68e98e61
+            checksum/config: 5dcfaaf3352927bae1592478d84dfc8de51a959fba92fdb42159a0e133d667aa
           labels:
             app.kubernetes.io/instance: RELEASE-NAME
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: pulsys
             app.kubernetes.io/part-of: pulsys
             app.kubernetes.io/version: 0.1.4
-            helm.sh/chart: pulsys-0.1.5
+            helm.sh/chart: pulsys-0.1.6
         spec:
           automountServiceAccountToken: false
           containers:
