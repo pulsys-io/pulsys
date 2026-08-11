@@ -3,7 +3,7 @@
 # image the Helm chart and the release pipeline target
 # (ghcr.io/pulsys-io/pulsys). For the zero-config local dev stack, see the
 # multi-stage build in ../../docker/Dockerfile used by compose.yaml.
-FROM golang:1.26-bookworm@sha256:18aedc16aa19b3fd7ded7245fc14b109e054d65d22ed53c355c899582bbb2113 AS build
+FROM golang:1.26-bookworm@sha256:6c5605ab3a9a9fb3c4eafe5b3d63cdbf3881caf113262b67862547b54a9db599 AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
