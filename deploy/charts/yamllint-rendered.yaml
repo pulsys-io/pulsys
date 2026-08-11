@@ -1,0 +1,25 @@
+# yamllint config for `helm template` output (not chart source).
+# Chart source still uses lintconf.yaml via `ct lint`.
+#
+# Only key-duplicates is enforced here: that is the Flux/kubectl failure mode
+# from #46 (duplicate app.kubernetes.io/{name,instance} in one mapping).
+# Other rules stay off — Helm's renderer does not match source indentation
+# style, and lintconf.yaml would false-fail on rendered manifests.
+extends: default
+rules:
+  key-duplicates: enable
+  braces: disable
+  brackets: disable
+  colons: disable
+  commas: disable
+  comments: disable
+  document-end: disable
+  document-start: disable
+  empty-lines: disable
+  hyphens: disable
+  indentation: disable
+  line-length: disable
+  new-line-at-end-of-file: disable
+  new-lines: disable
+  trailing-spaces: disable
+  truthy: disable

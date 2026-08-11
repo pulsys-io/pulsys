@@ -71,7 +71,7 @@ jobs:
       # 3. values.schema.json validation (accept good, reject bad)
       - name: schema accepts valid values
         run: |
-          for v in admin oidc ingress; do
+          for v in admin oidc ingress compose; do
             helm template rel "$CHART" -f "$CHART/ci/$v-values.yaml" >/dev/null
           done
       - name: schema rejects invalid values
@@ -89,7 +89,20 @@ jobs:
           helm plugin install --verify=false https://github.com/helm-unittest/helm-unittest --version v1.1.1
           helm unittest "$CHART"
 
-      # 5. kubeconform manifest validation against upstream k8s schemas
+      # 5. yamllint key-duplicates on rendered manifests (Flux/kubectl failure mode).
+      # ct lint already runs yamllint on chart *source* via lintconf.yaml, but
+      # Go templates are not valid YAML until rendered — and #46 only appeared
+      # after helm template with console/keycloak enabled (compose-values).
+      - name: yamllint rendered manifests
+        run: |
+          pip install --quiet 'yamllint>=1.35'
+          for v in admin oidc ingress compose; do
+            echo "--- yamllint rendered / $v ---"
+            helm template rel "$CHART" -f "$CHART/ci/$v-values.yaml" \
+              | yamllint -c deploy/charts/yamllint-rendered.yaml -
+          done
+
+      # 6. kubeconform manifest validation against upstream k8s schemas
       - name: install kubeconform
         run: |
           curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
@@ -97,7 +110,7 @@ jobs:
       - name: kubeconform (multi k8s version)
         run: |
           for kver in 1.27.0 1.29.0 1.31.0; do
-            for v in admin oidc ingress; do
+            for v in admin oidc ingress compose; do
               echo "--- k8s $kver / $v ---"
               helm template rel "$CHART" -f "$CHART/ci/$v-values.yaml" \
                 | kubeconform -strict -summary -ignore-missing-schemas \
@@ -106,6 +119,8 @@ jobs:
                     -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
             done
           done
+
+
 
   security:
     name: static security analysis

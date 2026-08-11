@@ -1,0 +1,38 @@
+# Static CI scenario: compose-parity stack (proxy + admin console + Keycloak).
+# Used by helm template | yamllint (key-duplicates) so #46-style duplicate
+# mapping keys are caught when console/keycloak render. Not wired into the
+# kind install matrix (heavier images / longer startup).
+proxy:
+  publicBaseURL: http://pulsys.default.svc.cluster.local:8080
+admin:
+  enabled: true
+  tenant: default
+  imports:
+    hfTokenSecret: pulsys-hf
+postgres:
+  host: pulsys-pg-rw
+  port: 5432
+  user: pulsys
+  password: pulsys
+  database: pulsys
+  sslmode: require
+console:
+  enabled: true
+keycloak:
+  enabled: true
+oidc:
+  enabled: true
+  issuer: http://localhost:8081/realms/pulsys
+  redirectURI: http://localhost:3000/auth/oidc/callback
+  clientID: pulsys-admin
+  clientSecret: public-dev-only
+  ownerGroups: pulsys:owner
+persistence:
+  enabled: true
+  size: 1Gi
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
