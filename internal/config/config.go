@@ -73,7 +73,7 @@ type Config struct {
 	MaxRedirects  int
 	SocketSendBuf int  // SO_SNDBUF for accepted TCP conns; 0 = 4 MiB default, -1 = leave kernel default
 	TCPCork       bool // Linux only: wrap write(headers)+sendfile(body) in TCP_CORK to coalesce them into one segment.  No-op on Darwin (sf_hdtr already fuses).
-	IoUring       bool // Linux only: use io_uring linked WRITE+SPLICE SQEs instead of cork+sendfile.  Requires kernel >= 6.1; falls back transparently if unavailable.
+	IoUring       bool // Linux only: use the io_uring reactor (header via IORING_OP_SEND, body via sendfile) instead of cork+sendfile.  Requires kernel >= 6.1; falls back transparently if unavailable.
 	Listeners     int  // Number of SO_REUSEPORT listeners on -listen (1 = single listener, no REUSEPORT).  Set to GOMAXPROCS or NumCPU for high-RPS workloads on multi-core hosts.
 	// Offline enables serving cached metadata (tree, revision, etc.) on
 	// GET/HEAD when present.  Artifact bodies are always cache-first.
@@ -175,7 +175,7 @@ func ParseFlags(fs *flag.FlagSet, args []string) (*Config, error) {
 	fs.IntVar(&cfg.MaxRedirects, "max-redirects", cfg.MaxRedirects, "max internal upstream redirects (prefer returning to client)")
 	fs.IntVar(&cfg.SocketSendBuf, "socket-send-buf", 0, "SO_SNDBUF (bytes) for accepted TCP conns; 0=4MiB default, -1=leave kernel default (reduces sendfile syscalls on large bodies)")
 	fs.BoolVar(&cfg.TCPCork, "tcp-cork", cfg.TCPCork, "Linux only: wrap write(headers)+sendfile(body) in TCP_CORK to coalesce them into one TCP segment; no-op on Darwin (sf_hdtr fuses regardless)")
-	fs.BoolVar(&cfg.IoUring, "iouring", false, "Linux only (experimental): use io_uring linked WRITE+SPLICE SQEs instead of cork+sendfile; requires kernel >= 6.1; falls back transparently if unavailable")
+	fs.BoolVar(&cfg.IoUring, "iouring", false, "Linux only (experimental): use the io_uring reactor (header via SEND, body via sendfile) instead of cork+sendfile; requires kernel >= 6.1; falls back transparently if unavailable")
 	fs.IntVar(&cfg.Listeners, "listeners", cfg.Listeners, "number of SO_REUSEPORT listeners on -listen (1 disables REUSEPORT); set to GOMAXPROCS for high-RPS workloads on multi-core hosts")
 	fs.BoolVar(&cfg.Offline, "offline", true, "serve cached metadata on GET/HEAD when present (default on). When false, metadata always refreshes upstream; artifact bodies remain cache-first")
 	fs.BoolVar(&cfg.StrictOffline, "strict-offline", false, "on cache miss return 504 instead of fetching upstream (cached-only / bench mode; requires a fully warmed cache)")

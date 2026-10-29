@@ -112,7 +112,7 @@ the stdlib bar mechanically, in CI, on every commit.
 ### Why a custom server at all
 
 The whole value of the warm path is **0 allocations and a single
-`sendfile(2)`/`io_uring` splice per cache hit**: file bytes go from disk to socket
+`sendfile(2)` per cache hit**: file bytes go from disk to socket
 without transiting user space (proven in [`internals.md`](internals.md)). Profiling
 a `fasthttp`-based ingress showed the remaining per-request allocations and
 syscalls originated inside the framework, not our code, and could not be removed
@@ -288,7 +288,7 @@ guarantees the code makes about itself.
 
 ### Why HTTP/1.1, not HTTP/2
 
-The warm path uses `sendfile(2)` + `sf_hdtr` (Darwin) and io_uring SPLICE (Linux
+The warm path uses `sendfile(2)` + `sf_hdtr` (Darwin) and io_uring + `sendfile(2)` (Linux
 ≥ 6.1) to copy file bytes disk-to-socket without transiting user space (see
 [`internals.md`](internals.md)). HTTP/2 wraps bodies in `DATA` frames with their
 own flow-control accounting, forcing at least one full user-space copy per

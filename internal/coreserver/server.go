@@ -229,10 +229,11 @@ type Server struct {
 	// Default is true (Linux: cork on; Darwin: unused).
 	TCPCork bool
 
-	// IoUring, when true and the kernel supports it (>= 6.1), uses
-	// io_uring linked WRITE+SPLICE SQEs to ship header+body in a
-	// single io_uring_enter call -- the Linux equivalent of Darwin's
-	// sf_hdtr fusion.  Falls back to TCPCork (or plain sendfile if
+	// IoUring, when true and the kernel supports it (>= 6.1), runs the
+	// io_uring reactor: accept/recv/header SEND on the ring, body via a
+	// blocking sendfile(2) from the reactor goroutine (IORING_OP_SPLICE
+	// needs a pipe and is always punted to io-wq, so it is not used on
+	// the production path).  Falls back to TCPCork (or plain sendfile if
 	// TCPCork is also false) when the kernel is too old or io_uring
 	// setup fails.  Linux only; ignored on Darwin.
 	IoUring bool

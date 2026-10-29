@@ -60,8 +60,8 @@ var (
 	// the variant being tested actually exercised the cork path.
 	tcpCorkCalls atomic.Int64
 
-	// ioUringFusedCalls counts warm responses shipped via linked
-	// io_uring WRITE+SPLICE (Linux Option B path).
+	// ioUringFusedCalls counts warm responses whose header was sent
+	// through the io_uring ring (body via sendfile; Linux Option B path).
 	ioUringFusedCalls atomic.Int64
 
 	// offlineRefusals counts how many cache misses were refused with

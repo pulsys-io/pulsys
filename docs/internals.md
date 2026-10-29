@@ -25,7 +25,7 @@ kernel/runtime implementation.
 | Allocations per warm hit (server side) | **0** | 0 |
 | User-space bytes copied per warm hit | header length only (~110 B) | header length only |
 | Syscalls per warm hit (Darwin, body ≤ `SO_SNDBUF`) | **1** (`sendfile` + `sf_hdtr` fused) | 1 |
-| Syscalls per warm hit (Linux io_uring) | **1** submission | 1 |
+| Syscalls per warm hit (Linux io_uring, 4 KiB) | **1.14** measured (1 `sendfile` + ~0.07 `io_uring_enter`, the rest Go runtime) | 1 |
 | Syscalls per warm hit (Linux cork fallback) | **2** (`write` + `sendfile`, one TCP segment via `TCP_CORK`) | 1 (only via io_uring) |
 | Cache-key compute per warm hit | 0 (memoised in `KeyHexCache`) | 0 |
 | Body fd lookup per warm hit | 0 (LRU-cached `*os.File`, ref-counted close) | 0 |
@@ -71,6 +71,41 @@ chunks) take 1-2 syscalls per response. `sendfile(2)`/`splice(2)` is the only
 primitive that copies an fd to a socket without a user-space round trip, and
 HTTP/1.1 requires at least one transition for the head plus body.
 
+#### Counting every syscall, not just the instrumented ones
+
+The expvar counters only see the calls Pulsys instruments.
+[`scripts/count_syscalls.sh`](../scripts/count_syscalls.sh) counts every
+syscall the server process makes while `wrk` drives load, using bpftrace on the
+`syscalls:sys_enter_*` tracepoints (exact counts, aggregated in-kernel, no
+measurable throughput cost), and divides by the requests `wrk` completed. It
+works on any server by process name, so the same harness measures the
+references:
+
+```bash
+sudo scripts/count_syscalls.sh pulsys http://127.0.0.1:8080/<repo>/resolve/main/<file> 10s
+sudo scripts/count_syscalls.sh nginx  http://127.0.0.1:18585/<path>/4k.bin 10s
+```
+
+Measured on a 4 vCPU Linux 6.18 VM (servers pinned to 2 cores, `wrk -t2 -c64`
+on the other 2), keep-alive, same 4 KiB file:
+
+| Server | Syscalls / response | Breakdown |
+|---|---|---|
+| pulsys `-iouring` | **1.14** | `sendfile` 1.01, `io_uring_enter` 0.07, Go runtime (`nanosleep`, `futex`) 0.05 |
+| nginx (`sendfile on; tcp_nopush on`) | 5.05 | `recvfrom`, `writev` (head), `sendfile`, 2x `setsockopt` (cork/uncork) |
+| fasthttp `FS` | 6.03 | ~2 each `read`, `pread64`, `write` (files under 8 KiB are read, not sendfile'd) |
+| Go `net/http` `FileServer` | 15.06 | per-request `openat`/`fstat`/`lseek`/`close`, 4 `fcntl`, ~4 `read`, `epoll_ctl`, `write`, `sendfile` |
+
+At 256 KiB pulsys rises to 1.66 (larger bodies wake the reactor more often);
+nginx stays at 5.04.
+
+`MODE=strace` swaps in `strace -c -f`. Its counts are also exact, but ptrace
+stops the process on every syscall: on the run above pulsys fell from ~119k to
+~21k req/s with strace attached, and the Go scheduler's `nanosleep` rate rose
+from 0.04 to 0.25 per request. Use it to spot an unexpected syscall, not to
+publish a ratio. On macOS the script uses the dtrace `syscall` provider
+(`MODE=dtrace`), which needs SIP to allow dtrace.
+
 ### Axis 3: user-space byte copies
 
 The only user-space bytes touched per warm hit are the HTTP response head,
@@ -95,7 +130,7 @@ go test -run='TestWarmHitAllocFloor' -v ./internal/coreserver   # CI keeps this 
 | Platform | Warm-path mechanism | Syscalls/hit |
 |----------|---------------------|--------------|
 | macOS | `sendfile(2)` + `sf_hdtr` (header + body fused) | 1 |
-| Linux 6.1+, `-iouring` | io_uring linked `WRITE` (header) + `SPLICE`/sendfile (body) | 1 (submission) |
+| Linux 6.1+, `-iouring` | io_uring `SEND` (header) + blocking `sendfile(2)` (body) from the reactor | ~1.1 measured (`sendfile` + amortised `io_uring_enter`) |
 | Linux fallback | `write(headers)` + `sendfile(body)`, coalesced into one TCP segment via `TCP_CORK` | 2 |
 
 ### macOS: `sendfile` + `sf_hdtr`
@@ -126,8 +161,9 @@ resumes (draining the header fully before counting file bytes, per the contract)
 
 ### Linux: io_uring reactor (and the cork fallback)
 
-The Linux fast path (`-iouring`, kernel 6.1+ for `SINGLE_ISSUER` +
-`DEFER_TASKRUN`) runs one io_uring ring per `SO_REUSEPORT` listener with a full
+The Linux fast path (`-iouring`, kernel 6.1+; the ring uses `COOP_TASKRUN`,
+with `SINGLE_ISSUER`/`DEFER_TASKRUN` deliberately off because Go migrates the
+reactor goroutine across threads) runs one io_uring ring per `SO_REUSEPORT` listener with a full
 netpoller bypass: accept, recv, and send all on the ring, raw sendfile for the
 body. Implementation:
 [`internal/coreserver/iouring_reactor_linux.go`](../internal/coreserver/iouring_reactor_linux.go)

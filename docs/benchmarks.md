@@ -219,7 +219,7 @@ Defaults assume region `us-east-1` and stack `PulsysBench` (override with
 
 | Surface | What to look for |
 |---|---|
-| `pulsys_io_uring_fused_calls` on `/debug/vars` (expvar) | warm responses sent via io_uring linked `WRITE`+`SPLICE`; **> 0 means engaged** |
+| `pulsys_io_uring_fused_calls` on `/debug/vars` (expvar) | warm responses whose header went through the io_uring ring (body via `sendfile`); **> 0 means engaged** |
 | same key on `/metrics` (Prometheus) | same counter, for scraping |
 | `-iouring` flag | requests io_uring; requires kernel ≥ 6.1, else transparent fallback to cork/sendfile |
 | `bench_saturate.sh` report header | records instance type + kernel in the artifact |
