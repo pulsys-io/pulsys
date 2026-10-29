@@ -89,20 +89,7 @@ jobs:
           npm audit --audit-level=moderate --json > audit.json
           jq -r '.metadata.vulnerabilities | to_entries[] | "  \(.key): \(.value)"' audit.json || cat audit.json
           set -e
-          block_level=high
-          # Astro/vite/esbuild chain has no upstream fix yet for
-          # GHSA-gv7w-rqvm-qjhr; block only critical on the site.
-          if [ "${{ matrix.workspace }}" = website ]; then
-            block_level=critical
-          fi
-          # aws-cdk-lib bundles brace-expansion (inBundle: true), so npm
-          # overrides cannot reach it. GHSA-rgw5-rvv9-x895 needs 5.0.9 and
-          # the newest aws-cdk-lib still ships 5.0.8, so there is nothing
-          # to bump to; block only critical until AWS republishes.
-          if [ "${{ matrix.workspace }}" = infra/cdk ]; then
-            block_level=critical
-          fi
-          npm audit --audit-level="${block_level}"
+          npm audit --audit-level=high
 
   trivy-fs:
     name: trivy filesystem
