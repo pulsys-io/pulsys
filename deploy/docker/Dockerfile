@@ -3,7 +3,7 @@
 # image the Helm chart and the release pipeline target
 # (ghcr.io/pulsys-io/pulsys). For the zero-config local dev stack, see the
 # multi-stage build in ../../docker/Dockerfile used by compose.yaml.
-FROM golang:1.26-bookworm@sha256:18aedc16aa19b3fd7ded7245fc14b109e054d65d22ed53c355c899582bbb2113 AS build
+FROM golang:1.27-bookworm@sha256:4fa7c968ba93f1635670522dbb01a2c78150443e1385746924566079f36570ea AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
@@ -12,7 +12,7 @@ ARG VERSION=dev
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/pulsys ./cmd/pulsys && \
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/pulsys-db ./cmd/pulsys-db
 
-FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
+FROM alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 RUN apk add --no-cache ca-certificates && \
     adduser -D -H -u 65532 -h /var/lib/pulsys nonroot && \
     mkdir -p /var/lib/pulsys/cache && chown 65532:65532 /var/lib/pulsys/cache

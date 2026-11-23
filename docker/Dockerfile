@@ -4,7 +4,7 @@
 #   pulsys  HF cache proxy + admin API listener
 #   console   nginx + static admin SPA
 
-FROM golang:1.26-bookworm@sha256:18aedc16aa19b3fd7ded7245fc14b109e054d65d22ed53c355c899582bbb2113 AS go-builder
+FROM golang:1.27-bookworm@sha256:4fa7c968ba93f1635670522dbb01a2c78150443e1385746924566079f36570ea AS go-builder
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
@@ -12,7 +12,7 @@ COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/pulsys ./cmd/pulsys && \
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/pulsys-db ./cmd/pulsys-db
 
-FROM node:26-bookworm@sha256:e2cd0ff87e2597f66fab50710216e2a08ad2f09bae0ca78f6b31e8c5f1a811a0 AS ui-builder
+FROM node:26-bookworm@sha256:b7087bc4d973034b30854b378ba107f9fab622b47514cb7e2592e41b8bab8d49 AS ui-builder
 WORKDIR /app
 COPY admin-ui/package.json admin-ui/package-lock.json ./
 RUN npm ci
@@ -20,14 +20,14 @@ COPY admin-ui/ .
 ENV PULSYS_STATIC_EXPORT=1
 RUN npm run build
 
-FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS init
+FROM alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf AS init
 RUN apk add --no-cache ca-certificates curl
 COPY --from=go-builder /out/pulsys-db /usr/local/bin/pulsys-db
 COPY docker/scripts/init.sh /usr/local/bin/pulsys-init
 RUN chmod +x /usr/local/bin/pulsys-init
 ENTRYPOINT ["/usr/local/bin/pulsys-init"]
 
-FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS pulsys
+FROM alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf AS pulsys
 RUN apk add --no-cache ca-certificates wget && \
     adduser -D -h /var/lib/pulsys pulsys && \
     mkdir -p /var/lib/pulsys/cache && \
